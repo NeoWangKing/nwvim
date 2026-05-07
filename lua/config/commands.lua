@@ -1,5 +1,5 @@
---- lua/config/commands.lua
---- User commands: OpenPDF, CompileLatex, Run
+-- lua/config/commands.lua
+-- User commands: OpenPDF, CompileLatex, Run
 
 -- ============================================================================
 -- Helper: parse options and filepath from user args

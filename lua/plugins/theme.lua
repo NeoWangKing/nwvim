@@ -1,7 +1,7 @@
 -- plugins/theme.lua
 
 -- define your theme name
-local active_theme = "onedark"
+local active_theme = "gruberdarker"
 
 -- define the config table of theme
 
@@ -54,7 +54,6 @@ local themes = {
         end,
     },
 
-
     onedarkpro = {
         "olimorris/onedarkpro.nvim",
         priority = 1000,
@@ -84,6 +83,18 @@ local themes = {
 
             vim.cmd("colorscheme onedarkpro")
         end,
+    },
+
+    gruberdarker = {
+      "blazkowolf/gruber-darker.nvim",
+      lazy = false,
+      priority = 1000,
+      config = function()
+        vim.cmd.colorscheme("gruber-darker")
+        -- 移除 Normal 高亮组的背景色，实现透明效果
+        -- vim.api.nvim_set_hl(0, "Normal", { bg = "none" })
+        -- vim.api.nvim_set_hl(0, "NormalNC", { bg = "none" }) -- 非当前窗口也透明
+      end,
     },
 }
 

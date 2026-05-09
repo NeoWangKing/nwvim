@@ -10,7 +10,6 @@ local function set_transparent()
     "Normal", "NormalNC", "EndOfBuffer", "NormalFloat",
     "FloatBorder", "SignColumn", "StatusLine", "StatusLineNC",
     "TabLine", "TabLineFill", "TabLineSel", "ColorColumn",
-    "CursorLine",
   }
   for _, g in ipairs(groups) do
     pcall(vim.api.nvim_set_hl, 0, g, { bg = "none" })
@@ -18,22 +17,15 @@ local function set_transparent()
   pcall(vim.api.nvim_set_hl, 0, "TabLineFill", { bg = "none", fg = "#767676" })
 end
 
--- if not vim.g.neovide then
---   set_transparent()
--- end
-
--- 确保在非 Neovide 环境下透明
 if not vim.g.neovide then
-  -- 当颜色主题改变时重新应用透明
   vim.api.nvim_create_autocmd("ColorScheme", {
     pattern = "*",
     callback = set_transparent,
   })
-  -- 启动完成后也应用一次，防止主题加载滞后
   vim.api.nvim_create_autocmd("VimEnter", {
     callback = function()
       if not vim.g.neovide then
-        vim.defer_fn(set_transparent, 0) -- 稍微延迟，确保主题已加载
+        vim.defer_fn(set_transparent, 0)
       end
     end,
   })

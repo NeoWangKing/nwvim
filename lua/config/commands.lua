@@ -1,10 +1,12 @@
 -- lua/config/commands.lua
--- User commands: OpenPDF, CompileLatex, Run
+-- 用户自定义命令：OpenPDF, CompileLatex, Run
 
 -- ============================================================================
--- Helper: parse options and filepath from user args
--- Returns { option = ..., filepath = ... }
+-- 辅助函数
 -- ============================================================================
+
+-- 解析命令参数中的选项和文件路径
+-- 返回 { option = "...", filepath = "..." } 或 nil, 错误信息
 local function parse_opts(args, option_map)
   local option = option_map.default
   local filepath = nil
@@ -30,16 +32,14 @@ local function parse_opts(args, option_map)
   return { option = option, filepath = filepath }, nil
 end
 
--- ============================================================================
--- Helper: check if we are running inside WSL
--- ============================================================================
+-- 检测是否在 WSL 环境中运行（保留以备将来跨平台使用）
 local function is_wsl()
   local uname = vim.loop.os_uname()
   return uname and uname.release and uname.release:lower():find("microsoft") ~= nil
 end
 
 -- ============================================================================
--- OpenPDF command (macOS optimization)
+-- 1. OpenPDF 命令：用系统默认应用打开 PDF 文件
 -- ============================================================================
 vim.api.nvim_create_user_command("OpenPDF", function(opts)
   local args = vim.split(opts.args or "", "%s+", { trimempty = true })
@@ -57,6 +57,7 @@ vim.api.nvim_create_user_command("OpenPDF", function(opts)
     return
   end
 
+  -- 选择阅读器
   local viewer = "preview"
   if parsed.option == "-evince" then
     viewer = "evince"
@@ -64,12 +65,11 @@ vim.api.nvim_create_user_command("OpenPDF", function(opts)
     viewer = "okular"
   end
 
-  -- 对于 Preview.app，使用 open 命令
+  -- 调用预览程序
   if viewer == "preview" then
     vim.fn.jobstart({ "open", "-a", "Preview", parsed.filepath }, { detach = true })
     print("正在使用 macOS 预览程序 (Preview.app) 打开: " .. vim.fn.fnamemodify(parsed.filepath, ":t"))
   else
-    -- 使用其他阅读器，检查是否存在
     if vim.fn.executable(viewer) == 0 then
       print("错误：未找到 PDF 阅读器 " .. viewer .. "，请安装或使用其他选项")
       return
@@ -96,7 +96,7 @@ end, {
 })
 
 -- ============================================================================
--- CompileLatex command
+-- 2. CompileLatex 命令：编译 LaTeX 文档
 -- ============================================================================
 vim.api.nvim_create_user_command("CompileLatex", function(opts)
   local args = vim.split(opts.args or "", "%s+", { trimempty = true })
@@ -116,9 +116,11 @@ vim.api.nvim_create_user_command("CompileLatex", function(opts)
     return
   end
 
+  -- 编译器映射
   local compiler_map = { ["-pdf"] = "pdflatex", ["-xe"] = "xelatex", ["-lua"] = "lualatex" }
   local compiler = compiler_map[parsed.option] or "pdflatex"
 
+  -- 检查编译器是否存在
   if vim.fn.executable(compiler) == 0 then
     print("错误：未找到编译器 " .. compiler .. "，请安装 TeX Live 或 MiKTeX")
     return
@@ -131,6 +133,7 @@ vim.api.nvim_create_user_command("CompileLatex", function(opts)
     print("警告：文件不是 .tex 扩展名，仍将尝试编译...")
   end
 
+  -- 构建编译命令
   local cmd
   if dir ~= "" and dir ~= "." then
     cmd = string.format('cd "%s" && %s -interaction=nonstopmode "%s"', dir, compiler, filename)
@@ -168,7 +171,7 @@ end, {
 })
 
 -- ============================================================================
--- Run command: 异步执行命令并将错误信息填充到 quickfix
+-- 3. Run 命令：异步执行外部命令，错误信息放入 quickfix 窗口
 -- ============================================================================
 vim.api.nvim_create_user_command("Run", function(opts)
   local cmd = opts.args
@@ -177,14 +180,16 @@ vim.api.nvim_create_user_command("Run", function(opts)
     return
   end
 
-  -- 创建临时文件保存输出
+  -- 将输出重定向到临时文件
   local tmpfile = vim.fn.tempname()
   local full_cmd = cmd .. ' > ' .. tmpfile .. ' 2>&1'
 
   vim.fn.jobstart(full_cmd, {
     on_exit = function(_, exit_code)
       vim.schedule(function()
+        -- 设置错误格式（适配 GCC/Clang 常见输出）
         vim.o.errorformat = "%f:%l:%c: %m,%f:%l: %m"
+        -- 将临时文件内容加载到 quickfix
         vim.cmd("cfile " .. tmpfile)
         local num_errs = vim.fn.getqflist({ size = 0 }).size
         if num_errs > 0 then

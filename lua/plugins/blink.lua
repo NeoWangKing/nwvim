@@ -52,10 +52,10 @@ return {
       },
 
       cmdline = {
-        source = {
-          [':'] = { 'path' },
-          ['/'] = { 'buffer' },
-        }
+        -- source = {
+        --   [':'] = { 'path' },
+        --   ['/'] = { 'buffer' },
+        -- }
       },
 
       signature = { enabled = true },

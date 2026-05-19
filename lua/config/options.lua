@@ -1,35 +1,7 @@
 -- lua/config/options.lua
--- 通用 Vim/Neovim 选项，包含终端透明处理
 
 vim.g.have_nerd_font = true
 vim.opt.termguicolors = true
-
--- 透明背景（仅对终端有效）
-local function set_transparent()
-  local groups = {
-    "Normal", "NormalNC", "EndOfBuffer", "NormalFloat",
-    "FloatBorder", "SignColumn", "StatusLine", "StatusLineNC",
-    "TabLine", "TabLineFill", "TabLineSel", "ColorColumn",
-  }
-  for _, g in ipairs(groups) do
-    pcall(vim.api.nvim_set_hl, 0, g, { bg = "none" })
-  end
-  pcall(vim.api.nvim_set_hl, 0, "TabLineFill", { bg = "none", fg = "#767676" })
-end
-
-if not vim.g.neovide then
-  vim.api.nvim_create_autocmd("ColorScheme", {
-    pattern = "*",
-    callback = set_transparent,
-  })
-  vim.api.nvim_create_autocmd("VimEnter", {
-    callback = function()
-      if not vim.g.neovide then
-        vim.defer_fn(set_transparent, 0)
-      end
-    end,
-  })
-end
 
 -- 行号 / 光标 / 滚动
 vim.opt.number = true
@@ -62,7 +34,7 @@ vim.opt.pumblend = 10
 vim.opt.winblend = 0
 vim.opt.conceallevel = 0
 vim.opt.concealcursor = ""
-vim.opt.lazyredraw = true
+vim.opt.lazyredraw = false
 vim.opt.synmaxcol = 300
 vim.opt.fillchars = { eob = " " }
 

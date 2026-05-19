@@ -1,12 +1,8 @@
 return {
   {
     'saghen/blink.cmp',
-    -- enabled = false,
     -- optional: provides snippets for the snippet source
-    dependencies = {
-      'rafamadriz/friendly-snippets',
-      'L3MON4D3/LuaSnip',
-    },
+    dependencies = { 'rafamadriz/friendly-snippets' },
 
     -- use a release tag to download pre-built binaries
     version = '1.*',
@@ -14,6 +10,7 @@ return {
     -- build = 'cargo build --release',
     -- If you use nix, you can build from source with:
     -- build = 'nix run .#build-plugin',
+
     ---@module 'blink.cmp'
     ---@type blink.cmp.Config
     opts = {
@@ -21,25 +18,20 @@ return {
       -- 'super-tab' for mappings similar to vscode (tab to accept)
       -- 'enter' for enter to accept
       -- 'none' for no mappings
-      --
+      
       -- All presets have the following mappings:
       -- C-space: Open menu or open docs if already open
       -- C-n/C-p or Up/Down: Select next/previous item
       -- C-e: Hide menu
       -- C-k: Toggle signature help (if signature.enabled = true)
-      --
+
       -- See :h blink-cmp-config-keymap for defining your own keymap
-      keymap = {
-        preset = 'super-tab',
-        -- ['<Tab>'] = { 'select_next', 'snippet_forward', 'fallback' },
-        -- ['<S-Tab>'] = { 'select_prev', 'snippet_backward', 'fallback' },
-      },
+      keymap = { preset = 'super-tab' },
 
       appearance = {
         -- 'mono' (default) for 'Nerd Font Mono' or 'normal' for 'Nerd Font'
         -- Adjusts spacing to ensure icons are aligned
-        use_nvim_cmp_as_default = false,
-        nerd_font_variant = 'mono',
+        nerd_font_variant = 'mono'
       },
 
       -- (Default) Only show the documentation popup when manually triggered
@@ -50,17 +42,6 @@ return {
       sources = {
         default = { 'lsp', 'path', 'snippets', 'buffer' },
       },
-
-      cmdline = {
-        -- source = {
-        --   [':'] = { 'path' },
-        --   ['/'] = { 'buffer' },
-        -- }
-      },
-
-      signature = { enabled = true },
-
-      snippets = { preset = 'luasnip' },
 
       -- (Default) Rust fuzzy matcher for typo resistance and significantly better performance
       -- You may use a lua implementation instead by using `implementation = "lua"` or fallback to the lua implementation,

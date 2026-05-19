@@ -1,12 +1,7 @@
 -- lua/config/commands.lua
--- 用户自定义命令：OpenPDF, CompileLatex, Run
+-- 用户自定义命令：OpenPDF, pdflatex, xelatex, lualatex, Run
 
--- ============================================================================
--- 辅助函数
--- ============================================================================
-
--- 解析命令参数中的选项和文件路径
--- 返回 { option = "...", filepath = "..." } 或 nil, 错误信息
+-- 解析命令参数中的选项和文件路径（用于 OpenPDF）
 local function parse_opts(args, option_map)
   local option = option_map.default
   local filepath = nil
@@ -32,108 +27,97 @@ local function parse_opts(args, option_map)
   return { option = option, filepath = filepath }, nil
 end
 
--- 检测是否在 WSL 环境中运行（保留以备将来跨平台使用）
-local function is_wsl()
-  local uname = vim.loop.os_uname()
-  return uname and uname.release and uname.release:lower():find("microsoft") ~= nil
+-- 获取当前 buffer 的 .tex 文件路径（如果可用）
+-- 返回完整路径，如果不符合要求则返回 nil, 错误信息
+local function get_current_tex_file()
+  local bufname = vim.api.nvim_buf_get_name(0)
+  if bufname == "" then
+    return nil, "错误：当前 buffer 没有关联文件"
+  end
+  if not bufname:match("%.tex$") then
+    return nil, "错误：当前文件不是 .tex 文件（" .. vim.fn.fnamemodify(bufname, ":t") .. "）"
+  end
+  return bufname, nil
 end
 
--- ============================================================================
--- 1. OpenPDF 命令：用系统默认应用打开 PDF 文件
--- ============================================================================
+-- ---------- 打开 PDF（支持自动选择阅读器）----------
 vim.api.nvim_create_user_command("OpenPDF", function(opts)
   local args = vim.split(opts.args or "", "%s+", { trimempty = true })
 
-  local opt_map = {
-    prefixes = { ["-okular"] = true, ["-evince"] = true },
-    default = "preview",  -- macOS 默认使用 Preview.app
-  }
+  -- 解析是否指定了阅读器选项
+  local viewer = nil
+  local filepath = nil
+  if #args >= 1 then
+    if args[1] == "-skim" then
+      viewer = "Skim"
+      filepath = args[2]
+    elseif args[1] == "-preview" then
+      viewer = "Preview"
+      filepath = args[2]
+    else
+      filepath = args[1]
+    end
+  end
 
-  local parsed, err = parse_opts(args, opt_map)
-  if not parsed then
-    print(err)
-    print("用法：:OpenPDF (-evince/-okular) [文件路径]")
-    print("      默认使用 macOS 预览程序 (Preview.app)")
+  if not(viewer) then
+    viewer = "Skim"
+  end
+
+  -- 如果未提供文件，自动匹配当前 .tex 对应的 PDF
+  if not filepath or filepath == "" then
+    local texfile, err = get_current_tex_file()
+    if not texfile then
+      print(err)
+      print("用法：:OpenPDF [-skim|-preview] [文件路径]")
+      return
+    end
+    filepath = texfile:gsub("%.tex$", ".pdf")
+  else
+    filepath = vim.fn.expand(filepath)
+  end
+
+  if vim.fn.filereadable(filepath) == 0 then
+    print("错误：PDF 文件不存在 - " .. filepath)
     return
   end
 
-  -- 选择阅读器
-  local viewer = "preview"
-  if parsed.option == "-evince" then
-    viewer = "evince"
-  elseif parsed.option == "-okular" then
-    viewer = "okular"
-  end
-
-  -- 调用预览程序
-  if viewer == "preview" then
-    vim.fn.jobstart({ "open", "-a", "Preview", parsed.filepath }, { detach = true })
-    print("正在使用 macOS 预览程序 (Preview.app) 打开: " .. vim.fn.fnamemodify(parsed.filepath, ":t"))
+  -- 调用阅读器
+  if viewer == "Skim" then
+      vim.fn.jobstart({ "open", "-a", "skim", filepath }, { detach = true })
+  elseif viewer == "Preview" then
+    vim.fn.jobstart({ "open", "-a", "Preview", filepath }, { detach = true })
   else
     if vim.fn.executable(viewer) == 0 then
-      print("错误：未找到 PDF 阅读器 " .. viewer .. "，请安装或使用其他选项")
+      print("错误：未找到 PDF 阅读器 " .. viewer)
       return
     end
-    vim.fn.jobstart({ viewer, parsed.filepath }, { detach = true })
-    print("正在使用 " .. viewer .. " 打开: " .. vim.fn.fnamemodify(parsed.filepath, ":t"))
+    vim.fn.jobstart({ viewer, filepath }, { detach = true })
   end
+
+  print("使用 " .. viewer .. " 打开: " .. vim.fn.fnamemodify(filepath, ":t"))
 end, {
-  nargs = "*",
+  nargs = "?",
   complete = function(arg_lead, cmdline, cursor_pos)
     local args = vim.split(cmdline:sub(1, cursor_pos), "%s+")
     if #args == 2 then
       if arg_lead:match("^-") then
-        return { "-okular", "-evince" }
+        return { "-skim", "-preview" }
       else
         return vim.fn.getcompletion(arg_lead, "file")
       end
-    elseif #args == 3 and (args[2] == "-okular" or args[2] == "-evince") then
+    elseif #args == 3 and (args[2] == "-skim" or args[2] == "-preview") then
       return vim.fn.getcompletion(arg_lead, "file")
     end
     return {}
   end,
-  desc = "打开 PDF 文件 (macOS 默认用 Preview.app, 也可用 -evince/-okular)",
+  desc = "打开 PDF 文件（默认 Skim，可选用 -preview 等）",
 })
 
--- ============================================================================
--- 2. CompileLatex 命令：编译 LaTeX 文档
--- ============================================================================
-vim.api.nvim_create_user_command("CompileLatex", function(opts)
-  local args = vim.split(opts.args or "", "%s+", { trimempty = true })
+-- ---------- 编译 LaTeX（编译后自动刷新 Skim）----------
+local function compile_tex(filepath, compiler)
+  local dir = vim.fn.fnamemodify(filepath, ":h")
+  local filename = vim.fn.fnamemodify(filepath, ":t")
 
-  local opt_map = {
-    prefixes = { ["-pdf"] = true, ["-xe"] = true, ["-lua"] = true },
-    default = "-pdf",
-  }
-
-  local parsed, err = parse_opts(args, opt_map)
-  if not parsed then
-    print(err)
-    print("用法：:CompileLatex [文件路径]")
-    print("      :CompileLatex -pdf [文件路径]")
-    print("      :CompileLatex -xe [文件路径]")
-    print("      :CompileLatex -lua [文件路径]")
-    return
-  end
-
-  -- 编译器映射
-  local compiler_map = { ["-pdf"] = "pdflatex", ["-xe"] = "xelatex", ["-lua"] = "lualatex" }
-  local compiler = compiler_map[parsed.option] or "pdflatex"
-
-  -- 检查编译器是否存在
-  if vim.fn.executable(compiler) == 0 then
-    print("错误：未找到编译器 " .. compiler .. "，请安装 TeX Live 或 MiKTeX")
-    return
-  end
-
-  local dir = vim.fn.fnamemodify(parsed.filepath, ":h")
-  local filename = vim.fn.fnamemodify(parsed.filepath, ":t")
-
-  if not filename:match("%.tex$") then
-    print("警告：文件不是 .tex 扩展名，仍将尝试编译...")
-  end
-
-  -- 构建编译命令
   local cmd
   if dir ~= "" and dir ~= "." then
     cmd = string.format('cd "%s" && %s -interaction=nonstopmode "%s"', dir, compiler, filename)
@@ -141,38 +125,81 @@ vim.api.nvim_create_user_command("CompileLatex", function(opts)
     cmd = string.format('%s -interaction=nonstopmode "%s"', compiler, filename)
   end
 
-  print("正在使用 " .. compiler .. " 编译: " .. filename)
+  print("编译: " .. filename)
   vim.fn.jobstart(cmd, {
     detach = true,
     on_exit = function(_, exit_code)
       if exit_code == 0 then
-        print("✓ 编译成功: " .. filename:gsub("%.tex$", ".pdf"))
+        local pdf = filepath:gsub("%.tex$", ".pdf")
+        print("✓ 编译成功: " .. pdf)
+        -- Skim 会自动刷新，无需额外操作；
+        -- 如果希望用 Preview 且刷新，可尝试 AppleScript，但体验不如 Skim
       else
-        print("✗ 编译失败 (退出码: " .. exit_code .. ")，请检查 LaTeX 日志")
+        print("✗ 编译失败 (退出码: " .. exit_code .. ")，请检查日志")
       end
     end,
   })
-end, {
-  nargs = "*",
-  complete = function(arg_lead, cmdline, cursor_pos)
-    local args = vim.split(cmdline:sub(1, cursor_pos), "%s+")
-    if #args == 2 then
-      if arg_lead:match("^-") then
-        return { "-pdf", "-xe", "-lua" }
-      else
-        return vim.fn.getcompletion(arg_lead, "file")
+end
+
+-- 创建编译命令的工厂函数（nargs 改为 "?" 以支持可选参数）
+local function create_latex_command(name, compiler)
+  vim.api.nvim_create_user_command(name, function(opts)
+    local filepath = opts.args
+    if not filepath or filepath == "" then
+      local texfile, err = get_current_tex_file()
+      if not texfile then
+        print(err)
+        print("用法：:" .. name .. " [文件路径]")
+        return
       end
-    elseif #args == 3 and (args[2] == "-pdf" or args[2] == "-xe" or args[2] == "-lua") then
-      return vim.fn.getcompletion(arg_lead, "file")
+      filepath = texfile
+    else
+      filepath = vim.fn.expand(filepath)
     end
-    return {}
+
+    if vim.fn.filereadable(filepath) == 0 then
+      print("错误：文件不存在 - " .. filepath)
+      return
+    end
+    if vim.fn.executable(compiler) == 0 then
+      print("错误：未找到 " .. compiler)
+      return
+    end
+
+    -- 标记自动编译
+    vim.b.latex_auto_compile = true
+    vim.b.latex_compiler = compiler
+
+    compile_tex(filepath, compiler)
+  end, {
+    nargs = "?",
+    complete = "file",
+    desc = "使用 " .. compiler .. " 编译 LaTeX" ..
+           "（首次使用后保存时自动编译）",
+  })
+end
+
+create_latex_command("Pdflatex", "pdflatex")
+create_latex_command("Xelatex", "xelatex")
+create_latex_command("Lualatex", "lualatex")
+
+-- 保存时自动编译（保持原有逻辑）
+local latex_augroup = vim.api.nvim_create_augroup("LatexAutoCompile", { clear = true })
+vim.api.nvim_create_autocmd("BufWritePost", {
+  group = latex_augroup,
+  pattern = "*.tex",
+  callback = function(args)
+    local buf = args.buf
+    if vim.b[buf].latex_auto_compile then
+      local compiler = vim.b[buf].latex_compiler or "pdflatex"
+      if vim.fn.executable(compiler) == 1 then
+        compile_tex(vim.api.nvim_buf_get_name(buf), compiler)
+      end
+    end
   end,
-  desc = "编译 LaTeX 文件 (默认 pdflatex，可用 -pdf/-xe/-lua 指定编译器)",
 })
 
--- ============================================================================
--- 3. Run 命令：异步执行外部命令，错误信息放入 quickfix 窗口
--- ============================================================================
+-- Run ：异步执行外部命令，错误信息放入 quickfix 窗口
 vim.api.nvim_create_user_command("Run", function(opts)
   local cmd = opts.args
   if not cmd or cmd == "" then

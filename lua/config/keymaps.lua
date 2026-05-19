@@ -1,17 +1,26 @@
--- Keymaps are automatically loaded on the VeryLazy event
--- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
--- Add any additional keymaps here
-
 local map = vim.keymap.set
 
-map("n", "<leader>re", ":restart<CR>", { desc = "Restart NeoVim" })
-map("n", "<leader><leader>x", ":source<CR>", { desc = "Source" })
+map("n", "<space>re", ":restart<CR>")
+map("n", "<space><space>x", ":source %<CR>")
+map("n", "<space>x", ":.lua<CR>")
+map("v", "<space>x", ":lua<CR>")
 
-map("n", "<space>", ":", { noremap = true, silent = true, desc = "Enter Ex command" })
+map("n", "<space>", ":")
+map("i", "jk", "<Esc>")
 
-local esc_opts = { noremap = true, silent = true }
-map("i", "jk", "<Esc>", vim.tbl_extend("force", esc_opts, { desc = "Exit insert mode (jk)" }))
+vim.keymap.set('n', 'p', function()
+  local save_col = vim.fn.col('.')
+  vim.cmd('normal! p')
+  vim.fn.cursor(vim.fn.line('.'), save_col)
+end, { desc = "Paste and keep the cursor col" })
 
+vim.keymap.set('n', 'P', function()
+  local save_col = vim.fn.col('.')
+  vim.cmd('normal! P')
+  vim.fn.cursor(vim.fn.line('.'), save_col)
+end, { desc = "Paste forwards and keep the cursor col" })
+
+-- better movement
 map("n", "j", function()
   return vim.v.count == 0 and "gj" or "j"
 end, { expr = true, silent = true, desc = "Down (wrap-aware)" })
@@ -24,12 +33,12 @@ map("n", "N", "Nzzzv", { desc = "Previous search result (centered)" })
 map("n", "<C-d>", "<C-d>zz", { desc = "Half page down (centered)" })
 map("n", "<C-u>", "<C-u>zz", { desc = "Half page up (centered)" })
 
-map({ "n", "x" }, "<leader>d", '"_d', { desc = "Delete without yanking" })
+map({ "n", "x" }, "<space>d", '"_d', { desc = "Delete without yanking" })
 
-map("n", "<C-Up>", ":resize +2<CR>", { desc = "Increase window height" })
-map("n", "<C-Down>", ":resize -2<CR>", { desc = "Decrease window height" })
-map("n", "<C-Left>", ":vertical resize -2<CR>", { desc = "Decrease window width" })
-map("n", "<C-Right>", ":vertical resize +2<CR>", { desc = "Increase window width" })
+map("n", "<A-Up>", ":resize +2<CR>", { desc = "Increase window height" })
+map("n", "<A-Down>", ":resize -2<CR>", { desc = "Decrease window height" })
+map("n", "<A-Left>", ":vertical resize -2<CR>", { desc = "Decrease window width" })
+map("n", "<A-Right>", ":vertical resize +2<CR>", { desc = "Increase window width" })
 
 map("n", "<A-j>", ":m .+1<CR>==", { desc = "Move line down" })
 map("n", "<A-k>", ":m .-2<CR>==", { desc = "Move line up" })
@@ -41,35 +50,34 @@ map("v", ">", ">gv", { desc = "Indent right and reselect" })
 
 map("n", "J", "mzJ`z", { desc = "Join lines and keep cursor position" })
 
-map("n", "<leader>pwd", function()
-  local path = vim.fn.expand("%:p")
-  vim.fn.setreg("+", path)
-  print("Copied file path: " .. path)
-end, { desc = "Copy full file path to clipboard" })
+-- nvim-tree
+map("n", "<space>e", ":NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
 
-map("n", "<leader>bn", ":bnext<CR>", { desc = "Next buffer" })
-map("n", "<leader>bp", ":bprevious<CR>", { desc = "Previous buffer" })
--- bufferline（bufferline.nvim）
-map("n", "bn", ":BufferLineCycleNext<CR>", { desc = "Next buffer(bufferline)" })
-map("n", "bp", ":BufferLineCyclePrev<CR>", { desc = "Previous buffer(bufferline)" })
-map("n", "<leader>bc", ":BufferLinePickClose<CR>", { desc = "Pick a buffer to close" })
-map("n", "<leader>bch", ":BufferLineCloseLeft<CR>", { desc = "Close buffers to the left" })
-map("n", "<leader>bcl", ":BufferLineCloseRight<CR>", { desc = "Close buffers to the right" })
+-- lazygit
+map("n", "<space>gg", "<cmd>LazyGit<CR>", { desc = "LazyGit" })
 
-map("n", "<leader>sv", ":vsplit<CR>", { desc = "Split window vertically" })
-map("n", "<leader>sh", ":split<CR>", { desc = "Split window horizontally" })
+-- buffer
+map("n", "<space>bn", ":bnext<CR>", { desc = "Next buffer" })
+map("n", "<space>bp", ":bprevious<CR>", { desc = "Previous buffer" })
+map("n", "<space>bc", ":BufferLinePickClose<CR>", { desc = "Pick a buffer to close" })
+map("n", "<space>bch", ":BufferLineCloseLeft<CR>", { desc = "Close buffers to the left" })
+map("n", "<space>bcl", ":BufferLineCloseRight<CR>", { desc = "Close buffers to the right" })
+
+-- split
+map("n", "<space>sv", ":vsplit<CR>", { desc = "Split window vertically" })
+map("n", "<space>sh", ":split<CR>", { desc = "Split window horizontally" })
+
 local job_id = 0
-map("n", "<leader>st", function()
+map("n", "<space>st", function()
   vim.cmd.vnew()
   vim.cmd.term()
   vim.cmd.wincmd("J")
   vim.api.nvim_win_set_height(0, 10)
-
   job_id = vim.bo.channel
 end, { desc = "Split window for terminal downwards"})
-map("t", "<Esc>", "<C-\\><C-n>", { desc = "Return to normal mode" })
+map("t", "jk", "<C-\\><C-n>", { desc = "Return to normal mode" })
 
-map("n", "<leader>ls", function()
+map("n", "<space>ls", function()
   vim.fn.chansend(job_id, { "ls -la\r\n" })
 end)
 
@@ -80,19 +88,20 @@ vim.api.nvim_create_autocmd("LspAttach", {
     local bufnr = ev.buf
     map("n", "gd", vim.lsp.buf.definition, { buffer = bufnr, silent = true, desc = "Go to definition" })
     map("n", "K", vim.lsp.buf.hover, { buffer = bufnr, silent = true, desc = "Hover documentation" })
-    map("n", "<leader>rn", vim.lsp.buf.rename, { buffer = bufnr, silent = true, desc = "Rename symbol" })
-    map("n", "<leader>ca", vim.lsp.buf.code_action, { buffer = bufnr, silent = true, desc = "Code actions" })
+    map("n", "<space>rn", vim.lsp.buf.rename, { buffer = bufnr, silent = true, desc = "Rename symbol" })
+    map("n", "<space>ca", vim.lsp.buf.code_action, { buffer = bufnr, silent = true, desc = "Code actions" })
     map("n", "gr", vim.lsp.buf.references, { buffer = bufnr, silent = true, desc = "Go to references" })
     map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, { buffer = bufnr, silent = true, desc = "Previous diagnostic" })
     map("n", "]d", function() vim.diagnostic.jump({ count = 1 }) end, { buffer = bufnr, silent = true, desc = "Next diagnostic" })
   end,
 })
 
-map("n", "<leader>td", function()
+-- toggle
+map("n", "<space>td", function()
   vim.diagnostic.enable(not vim.diagnostic.is_enabled())
 end, { desc = "Toggle diagnostics" })
 
-map("n", "<leader>tw", function()
+map("n", "<space>tw", function()
   local saved_cursor = vim.api.nvim_win_get_cursor(0)
   vim.wo.wrap = not vim.wo.wrap
   vim.api.nvim_win_set_cursor(0, saved_cursor)

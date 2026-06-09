@@ -6,6 +6,10 @@ require('config.autocmds')
 require('config.commands')
 require('config.lazy')
 
+
+-- 让 .gp 文件被识别为 gnuplot 类型
+vim.filetype.add({ extension = { gp = 'gnuplot' } })
+
 -- vim.cmd.colorscheme("gruber-darker")
 -- vim.cmd.colorscheme("tokyonight")
 vim.cmd.colorscheme("catppuccin")
@@ -41,6 +45,8 @@ if not vim.g.neovide then
   })
 end
 
+vim.lsp.config("julials", { settings = {} })
+vim.lsp.enable("julials")
 vim.lsp.enable('astro')
 vim.lsp.enable('clangd')
 vim.lsp.enable('cssls')

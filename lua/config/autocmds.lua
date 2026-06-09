@@ -39,3 +39,10 @@ vim.api.nvim_create_autocmd('TermOpen', {
     vim.opt.relativenumber = false
   end,
 })
+-- 为 gnuplot 设置正确的注释符号
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "gnuplot",
+  callback = function()
+    vim.bo.commentstring = "# %s"
+  end,
+})

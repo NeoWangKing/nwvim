@@ -107,3 +107,6 @@ map("n", "<space>tw", function()
   vim.api.nvim_win_set_cursor(0, saved_cursor)
   print("Wrap " .. (vim.wo.wrap and "ON" or "OFF"))
 end, { desc = "Toggle wrap (keep cursor)" })
+
+-- oil.nvim
+map("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })

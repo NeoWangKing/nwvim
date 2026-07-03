@@ -6,6 +6,7 @@ require('config.autocmds')
 require('config.commands')
 require('config.lazy')
 
+vim.opt.clipboard = "unnamedplus"
 
 -- 让 .gp 文件被识别为 gnuplot 类型
 vim.filetype.add({ extension = { gp = 'gnuplot' } })

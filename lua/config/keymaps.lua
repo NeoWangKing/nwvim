@@ -75,7 +75,6 @@ map("n", "<space>st", function()
   vim.api.nvim_win_set_height(0, 10)
   job_id = vim.bo.channel
 end, { desc = "Split window for terminal downwards"})
-map("t", "jk", "<C-\\><C-n>", { desc = "Return to normal mode" })
 
 map("n", "<space>ls", function()
   vim.fn.chansend(job_id, { "ls -la\r\n" })

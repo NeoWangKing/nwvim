@@ -67,18 +67,52 @@ map("n", "<space>bcl", ":BufferLineCloseRight<CR>", { desc = "Close buffers to t
 map("n", "<space>sv", ":vsplit<CR>", { desc = "Split window vertically" })
 map("n", "<space>sh", ":split<CR>", { desc = "Split window horizontally" })
 
-local job_id = 0
-map("n", "<space>st", function()
-  vim.cmd.vnew()
-  vim.cmd.term()
-  vim.cmd.wincmd("J")
-  vim.api.nvim_win_set_height(0, 10)
-  job_id = vim.bo.channel
-end, { desc = "Split window for terminal downwards"})
+local term_buf = nil
 
-map("n", "<space>ls", function()
-  vim.fn.chansend(job_id, { "ls -la\r\n" })
-end)
+map("n", "<space>st", function()
+  if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
+    local win = vim.fn.bufwinnr(term_buf)
+    if win > 0 then
+      -- 已有窗口，直接跳转
+      vim.api.nvim_set_current_win(vim.fn.win_getid(win))
+      return
+    end
+  end
+
+  -- 判断当前窗口宽高比
+  local width = vim.o.columns
+  local height = vim.o.lines
+  local horizontal = width > (3 * height)  -- 宽 > 高，从右侧打开
+
+  if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
+    -- buffer 存在，但没有窗口，打开新的分屏窗口
+    if horizontal then
+      vim.cmd("vsplit")
+      -- 可以设置列宽，例如取当前窗口的 30%
+      local col_width = math.min(50, math.floor(width * 0.3))
+      vim.api.nvim_win_set_width(0, col_width)
+    else
+      vim.cmd("below split")
+      local row_height = math.min(10, math.floor(height * 0.3))
+      vim.api.nvim_win_set_height(0, row_height)
+    end
+    vim.api.nvim_set_current_buf(term_buf)
+  else
+    -- 创建新的终端 buffer
+    if horizontal then
+      vim.cmd("vsplit")
+      vim.cmd.term()
+      local col_width = math.min(50, math.floor(width * 0.3))
+      vim.api.nvim_win_set_width(0, col_width)
+    else
+      vim.cmd("below split")
+      vim.cmd.term()
+      local row_height = math.min(10, math.floor(height * 0.3))
+      vim.api.nvim_win_set_height(0, row_height)
+    end
+    term_buf = vim.api.nvim_get_current_buf()
+  end
+end, { desc = "Toggle terminal window (adaptive split)" })
 
 -- LSP
 vim.api.nvim_create_autocmd("LspAttach", {
@@ -109,3 +143,37 @@ end, { desc = "Toggle wrap (keep cursor)" })
 
 -- oil.nvim
 map("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
+
+-- go to file
+map("n", "<space>gf", function()
+  local cfile = vim.fn.expand("<cfile>")
+  if cfile == "" then
+    vim.notify("光标下没有文件名", vim.log.levels.WARN)
+    return
+  end
+
+  -- 去掉可能存在的行号/列号后缀 (例如 file:10:5)
+  local file, line, col = cfile:match("^([^:]+):?(%d*):?(%d*)$")
+  if file == "" or file == nil then file = cfile end
+  line = tonumber(line) or 1
+  col = tonumber(col) or 1
+
+  -- 1. 先尝试直接打开（支持绝对/相对路径）
+  if vim.fn.filereadable(file) == 1 then
+    vim.cmd.edit({ file, bang = true })
+  else
+    -- 2. 在 'path' 选项中查找
+    local found = vim.fn.findfile(file)
+    if found ~= "" then
+      vim.cmd.edit(found)
+    else
+      vim.notify("找不到文件: " .. file, vim.log.levels.WARN)
+      return
+    end
+  end
+
+  -- 跳转到指定行/列
+  if line > 1 or col > 1 then
+    vim.api.nvim_win_set_cursor(0, { line, col - 1 })
+  end
+end, { desc = "Go to file under cursor (enhanced)" })

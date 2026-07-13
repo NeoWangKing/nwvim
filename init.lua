@@ -46,6 +46,10 @@ if not vim.g.neovide then
   })
 end
 
+vim.g.loaded_perl_provider = 0
+vim.g.loaded_python3_provider = 0
+vim.g.loaded_ruby_provider = 0
+
 vim.lsp.config("julials", { settings = {} })
 vim.lsp.enable("julials")
 vim.lsp.enable('astro')

@@ -7,6 +7,8 @@ return {
       require('nvim-treesitter').setup {
         install_dir = vim.fn.stdpath('data') .. '/site',
         ensure_installed = {
+          "html",
+          "xml",
           "markdown",
           "markdown_inline",
           "latex",          -- 数学公式解析

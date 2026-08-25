@@ -26,7 +26,7 @@ return {
       },
       integrations = {
         markdown = { enabled = true },
-        html = { enabled = true },
+        html = { enabled = false },
       },
     })
   end,

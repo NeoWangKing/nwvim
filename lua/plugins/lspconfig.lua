@@ -21,9 +21,14 @@ return {
           "texlab",
           "marksman",
           "ts_ls",
-          "cssls",
+          "cssls"
         },
-        autoMatic_installation = true,
+        automatic_installation = true,
+        handlers = {
+          function(server_name)
+            vim.lsp.enable(server_name)
+          end,
+        },
       })
 
       -- 3. 获取 blink.cmp 的能力集，并合并 Neovim 原生能力
@@ -50,7 +55,23 @@ return {
 
       vim.lsp.config('clangd', {})
       vim.lsp.config('pyright', {})
-      vim.lsp.config('astro', {})
+      -- 为 astro 服务器定义配置
+      vim.lsp.config("astro", {
+        init_options = {
+          typescript = {
+            -- 动态获取项目内的 TypeScript 路径
+            tsdk = vim.fs.joinpath(
+              vim.fs.root(0, { "package.json", "node_modules" }) or vim.fn.getcwd(),
+              "node_modules",
+              "typescript",
+              "lib"
+            ),
+          },
+        },
+      })
+
+      -- 显式启用 astro 服务器（确保它被启动）
+      vim.lsp.enable("astro")
       vim.lsp.config('texlab', {})
       vim.lsp.config('marksman', {})
       vim.lsp.config('ts_ls', {})

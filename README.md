@@ -2,6 +2,8 @@
 
 我的个人 Neovim 配置，基于 [lazy.nvim](https://github.com/folke/lazy.nvim) 管理插件，开箱即用：首次启动会自动安装 lazy.nvim、全部插件、Treesitter 解析器和 LSP 服务器。
 
+> 此说明部分由 AI 参与编写，我尽量人工核查以防出现问题，不过难免出现纰漏，请见谅
+
 ## ✨ 特性
 
 - **插件管理**：lazy.nvim，插件按功能拆分在 `lua/plugins/`，并通过 `lazy-lock.json` 锁定版本
@@ -61,7 +63,17 @@ git clone https://github.com/NeoWangKing/nwvim.git "$env:LOCALAPPDATA\nvim"
 nvim
 ```
 
-首次启动会自动克隆 lazy.nvim 并安装所有插件，Mason 会自动安装 LSP 服务器，Treesitter 会自动安装解析器，请耐心等待。
+### 运行验证
+
+首次启动会自动克隆 lazy.nvim 并安装所有插件，Mason 会自动安装 LSP 服务器，Treesitter 会自动安装解析器，请确保良好的网络环境（至少能访问 Github 吧），并耐心等待。
+
+然后可以运行命令：
+
+```lua
+:checkhealth
+```
+
+并根据输出结果自行判断并修复一些环境的具体问题。
 
 ## ⌨️ 常用快捷键
 
@@ -128,7 +140,3 @@ git pull
 ```
 
 或在 Neovim 中执行 `:Lazy update` / `:Lazy sync` 更新插件。
-
-## 🙏 致谢
-
-感谢 Neovim 社区和所有用到的插件作者：lazy.nvim、blink.cmp、telescope.nvim、nvim-treesitter、mason.nvim、nvim-lspconfig、catppuccin、nvim-tree、oil.nvim、noice.nvim 等。

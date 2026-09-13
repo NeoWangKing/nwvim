@@ -82,6 +82,7 @@ nvim
 | 按键 | 功能 |
 | --- | --- |
 | `jk` | 插入模式下返回 Normal 模式 |
+| `<leader>;` | 进入命令行（替代直接按空格） |
 | `<leader>ff` / `<leader>fg` | 查找文件 / 全文搜索 |
 | `<leader>mg` | Multi Grep（用**两个空格**分隔关键词和 glob，如 `func  *.lua`） |
 | `<leader>fb` / `<leader>fh` | 切换 buffer / 查找帮助 |

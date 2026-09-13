@@ -34,7 +34,7 @@ vim.opt.pumblend = 10
 vim.opt.winblend = 0
 vim.opt.conceallevel = 0
 vim.opt.concealcursor = ""
-vim.opt.lazyredraw = false
+vim.opt.lazyredraw = false -- 保持默认：永久开启会与 noice.nvim 冲突
 vim.opt.synmaxcol = 300
 vim.opt.fillchars = { eob = " " }
 
@@ -51,10 +51,10 @@ vim.opt.swapfile = false
 
 -- 性能/响应
 vim.opt.updatetime = 300
-vim.opt.timeoutlen = 500
+vim.opt.timeoutlen = 300
 vim.opt.ttimeoutlen = 50
-vim.opt.redrawtime = 10000
-vim.opt.maxmempattern = 20000
+vim.opt.redrawtime = 1000
+vim.opt.maxmempattern = 1000
 
 -- 编辑行为
 vim.opt.autoread = true
@@ -82,12 +82,9 @@ vim.opt.wildignorecase = true
 -- 差异模式
 vim.opt.diffopt:append("linematch:60")
 
--- 折叠（优先使用 Treesitter，否则用 indent）
-local has_ts, _ = pcall(require, "nvim-treesitter")
-if has_ts then
-  vim.opt.foldmethod = "expr"
-  vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
-else
-  vim.opt.foldmethod = "indent"
-end
+-- 折叠：使用 indent，简单且性能更好
+-- 如需 Treesitter 折叠，需要在 lazy.nvim 加载插件之后再设置
+-- vim.opt.foldmethod = "expr"
+-- vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldmethod = "indent"
 vim.opt.foldlevel = 99

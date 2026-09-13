@@ -77,42 +77,28 @@ return {
       vim.lsp.config('ts_ls', {})
       vim.lsp.config('cssls', {})
 
-      -- 6. 设置 LSP 附加时的行为
-      --    NeoVim 0.11+ 推荐使用 LspAttach 自动命令，而不是 on_attach 回调
+      -- 6. 诊断显示配置只设置一次（避免每次 LspAttach 都重复执行）
+      vim.diagnostic.config({
+        virtual_text = false, -- 关闭行内显示，让界面更清爽
+        float = {
+          border = 'rounded',  -- 可选，为窗口添加圆角边框
+          source = 'always',   -- 可选，显示诊断来源（如 LSP 服务器名）
+          prefix = '',         -- 可选，自定义每条信息的前缀
+        },
+      })
+
+      -- 7. 设置 LSP 附加时的行为（gd/K/gr/<leader>rn/<leader>ca 等通用键位见 lua/config/keymaps.lua）
       vim.api.nvim_create_autocmd("LspAttach", {
         callback = function(args)
           local client = vim.lsp.get_client_by_id(args.data.client_id)
-          local bufnr = args.buf
-          -- 这里可以放置你之前 on_attach 里的逻辑，比如设置快捷键
-          local bufopts = { noremap = true, silent = true, buffer = bufnr }
-          -- 跳转到定义
-          vim.keymap.set("n", "gd", vim.lsp.buf.definition, bufopts)
-          -- 显示悬浮文档
-          vim.keymap.set("n", "K", vim.lsp.buf.hover, bufopts)
-          -- 查找引用
-          vim.keymap.set("n", "gr", vim.lsp.buf.references, bufopts)
-          -- 重命名符号
-          vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, bufopts)
-          -- 代码操作
-          vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, bufopts)
+          local bufopts = { noremap = true, silent = true, buffer = args.buf }
+
           vim.keymap.set('n', '<leader>ee', vim.diagnostic.open_float, { desc = '显示当前行的诊断信息' })
-          -- ... 其他快捷键 ...
           if client.server_capabilities.documentFormattingProvider then
             vim.keymap.set("n", "<leader>f", function()
               vim.lsp.buf.format({ async = true })
             end, bufopts)
           end
-
-          vim.diagnostic.config({
-            virtual_text = false, -- 关闭行内显示，让界面更清爽
-            float = {
-              border = 'rounded',  -- 可选，为窗口添加圆角边框
-              source = 'always',   -- 可选，显示诊断来源（如 LSP 服务器名）
-              prefix = '',         -- 可选，自定义每条信息的前缀
-            },
-            -- 可选：设置延迟后自动弹出（单位：毫秒）
-            -- 注意：这可能需要配合 CursorHold 自动命令实现，下方有示例
-          })
         end,
       })
     end,

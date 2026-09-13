@@ -5,7 +5,7 @@ map("n", "<space><space>x", ":source %<CR>")
 map("n", "<space>x", ":.lua<CR>")
 map("v", "<space>x", ":lua<CR>")
 
-map("n", "<space>", ":")
+map("n", "<leader>;", ":")
 map("i", "jk", "<Esc>")
 
 vim.keymap.set('n', 'p', function()

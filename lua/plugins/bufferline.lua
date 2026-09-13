@@ -14,7 +14,7 @@ return {
           max_prefix_length = 15,
           tab_size = 18,
 
-          diagnostics = "nvim_lsp",
+          diagnostics = false, -- LSP 诊断不再实时刷新 tabline，减少重绘
           diagnostics_indicator = function(count, level)
             local icon = level:match("error") and " " or " "
             return " " .. icon .. count
@@ -27,7 +27,7 @@ return {
           show_close_icon = true,
 
           hover = {
-            enabled = true,
+            enabled = false, -- 关闭 tabline 悬停弹窗，减少 CursorHold 处理
             delay = 200,
             reveal = {'close'}
           },

@@ -1,5 +1,9 @@
 require('vim._core.ui2').enable({})
 
+-- leader 必须在定义任何 <leader> 键位之前设置
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
 require('config.options')
 require('config.keymaps')
 require('config.autocmds')

@@ -10,15 +10,13 @@ return {
     vim.g.loaded_netrwPlugin = 1
 
     require("nvim-tree").setup({
-      auto_reload_on_write = true,
+      auto_reload_on_write = false, -- 已有 filesystem watcher，避免保存时整树重载
       git = {
         enable = true,
         ignore = false,
       },
       update_focused_file = {
-        enable = true,
-        update_cwd = true,
-        ignore_list = {},
+        enable = false, -- 避免每次 BufEnter 都在大项目里定位文件、递归展开目录
       },
       renderer = {
         group_empty = false,

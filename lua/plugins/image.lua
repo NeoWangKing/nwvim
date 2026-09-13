@@ -6,26 +6,13 @@ return {
     require("image").setup({
       backend = "kitty",        -- Neovide / WezTerm 都支持 kitty 图形协议
       processor = "magick_cli", -- 使用 ImageMagick 命令行处理
-      -- 指定自动渲染的图片文件扩展名（即 Neovim 的 filetype）
-      filetypes = {
-        "png",
-        "jpg",
-        "jpeg",
-        "gif",
-        "bmp",
-        "webp",
-        "ppm",
-        "pgm",
-        "pbm",
-        "tiff",
-        "tif",
-        "svg",
-        "ico",
-        "heic",
-        "heif",
-      },
+      max_width_window_percentage = 50,
       integrations = {
-        markdown = { enabled = true },
+        markdown = {
+          enabled = true,
+          -- 性能优化：只渲染光标所在的图片，避免滚动时批量调用 ImageMagick
+          only_render_image_at_cursor = true,
+        },
         html = { enabled = false },
       },
     })

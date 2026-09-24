@@ -46,7 +46,8 @@ return {
 
           highlights = {
             buffer_selected = { bold = true, italic = false, },
-            separator = { fg = "#B4BEFE", },
+            -- 分隔线：淡钢蓝（原来是 catppuccin 的 lavender #B4BEFE，已换成 P3 色）
+            separator = { fg = "#414549", },
           },
         }
       })

@@ -67,7 +67,22 @@ vim.opt.path:append("**")
 vim.opt.selection = "inclusive"
 vim.opt.mouse = "a"
 vim.opt.mousemodel = "popup"
-vim.opt.clipboard:append("unnamedplus")
+-- 剪贴板
+-- unnamedplus 在 macOS / Windows 由 Neovim 原生支持（pbcopy / clip.exe），
+-- 但在 Linux 上需要 xclip / xsel / wl-copy 之一；没有工具却启用它，
+-- yank 会报错或静默失效。所以先探测再决定。
+local P = require("config.platform")
+if P.clipboard_available() then
+  vim.opt.clipboard:append("unnamedplus")
+else
+  vim.schedule(function()
+    vim.notify_once(
+      "未检测到剪贴板工具（xclip / xsel / wl-copy），已跳过 unnamedplus。\n"
+        .. "装上其中之一即可恢复系统剪贴板互通，例如：sudo apt install xclip",
+      vim.log.levels.WARN
+    )
+  end)
+end
 vim.opt.whichwrap:append("<>,h,l")
 
 -- 拆分窗口

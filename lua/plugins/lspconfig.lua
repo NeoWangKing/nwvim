@@ -2,8 +2,10 @@ return {
   {
     "neovim/nvim-lspconfig",
     dependencies = {
-      "williamboman/mason.nvim",
-      "williamboman/mason-lspconfig.nvim",
+      -- mason 已从 williamboman 迁移到 mason-org 组织，用新名避免依赖旧重定向。
+      -- 注意要和 lua/plugins/mason.lua 里写的名字一致，否则会被当成两个插件。
+      "mason-org/mason.nvim",
+      "mason-org/mason-lspconfig.nvim",
       "saghen/blink.cmp",
     },
     config = function()
@@ -77,30 +79,10 @@ return {
       vim.lsp.config('ts_ls', {})
       vim.lsp.config('cssls', {})
 
-      -- 6. 诊断显示配置只设置一次（避免每次 LspAttach 都重复执行）
-      vim.diagnostic.config({
-        virtual_text = false, -- 关闭行内显示，让界面更清爽
-        float = {
-          border = 'rounded',  -- 可选，为窗口添加圆角边框
-          source = 'always',   -- 可选，显示诊断来源（如 LSP 服务器名）
-          prefix = '',         -- 可选，自定义每条信息的前缀
-        },
-      })
-
-      -- 7. 设置 LSP 附加时的行为（gd/K/gr/<leader>rn/<leader>ca 等通用键位见 lua/config/keymaps.lua）
-      vim.api.nvim_create_autocmd("LspAttach", {
-        callback = function(args)
-          local client = vim.lsp.get_client_by_id(args.data.client_id)
-          local bufopts = { noremap = true, silent = true, buffer = args.buf }
-
-          vim.keymap.set('n', '<leader>ee', vim.diagnostic.open_float, { desc = '显示当前行的诊断信息' })
-          if client.server_capabilities.documentFormattingProvider then
-            vim.keymap.set("n", "<leader>f", function()
-              vim.lsp.buf.format({ async = true })
-            end, bufopts)
-          end
-        end,
-      })
+      -- 注意：LSP 的键位绑定与诊断显示配置已统一移到 lua/config/keymaps.lua。
+      -- 原先这里有第二个 LspAttach 回调，和 keymaps.lua 里的那个重复定义了
+      -- gd / K / gr / 重命名 / 代码操作，且把 vim.diagnostic.config 放在回调里
+      -- （每次附加服务器都会重跑一遍）。现在只保留服务器本身的配置。
     end,
   }
 }

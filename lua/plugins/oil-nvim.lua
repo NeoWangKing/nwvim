@@ -26,6 +26,11 @@ return {
       -- Set to `false` to remove a keymap
       -- See :help oil-actions for a list of all available actions
       keymaps = {
+        -- oil 的帮助窗口直接渲染下面这张 keymaps 表，所以自定义键位
+        -- （带 desc 的）会自动出现在里面，不需要另外维护一份清单。
+        --
+        -- ⚠ 帮助只绑在 g? 上，不要另绑单键 `?`：
+        --   oil 缓冲区里 `?` 仍要用于反向搜索，夺走它只省一次按键，不划算。
         ["g?"] = { "actions.show_help", mode = "n" },
         ["<CR>"] = "actions.select",
         ["<C-s>"] = { "actions.select", opts = { vertical = true } },
@@ -42,6 +47,89 @@ return {
         ["gx"] = "actions.open_external",
         ["g."] = { "actions.toggle_hidden", mode = "n" },
         ["g\\"] = { "actions.toggle_trash", mode = "n" },
+
+        -- ═══════════════════════════════════════════════════════════════
+        --  dired 兼容层（实现在 lua/config/oil-dired.lua）
+        --
+        --  背景：oil 的「可编辑目录缓冲区」本身就是 Emacs 的 wdired ——
+        --  改名 = 编辑那一行，删除 = 删掉那一行，:w 提交（所以 :w 就是
+        --  dired 的 x）。下面补的是 dired 的另一半：标记 + 批量执行。
+        --
+        --  ⚠ 为什么全部挂在 <leader>（空格）下
+        --
+        --  dired 能把 m/u/t/T/M/Z/D/s/^ 这些单字母全用掉，是因为
+        --  **dired 缓冲区不是文本编辑缓冲区**，文件操作不经过文本。
+        --  而 oil 的缓冲区**就是**操作模型本身，编辑类按键是它的命脉。
+        --  照搬 dired 单字母键位会直接破坏编辑器，实测后果：
+        --    · u 被夺走 -> 改错文件名后无法撤销（只能 :undo）
+        --    · Z 被夺走 -> ZZ（保存退出）失效，按 ZZ 变成触发两次 Z
+        --    · t/T 被夺走 -> 常用的 till 动作失效
+        --    · D 被夺走 -> 编辑文件名时 d$ 失效
+        --    · s/^/M 被夺走 -> substitute / 行首 / 屏幕中间 全部失效
+        --
+        --  统一加 <leader> 前缀后冲突就不存在了，而且第二段还能原样沿用
+        --  dired 的字母，所以还原度反而最高（<leader>M 就是 dired 的 M）。
+        --  空格在 oil 缓冲区里原本完全空闲。
+        --
+        --  代价（仅在 oil 缓冲区内）：会盖住 4 个全局 <leader> 映射 ——
+        --    <leader>d（delete without yank）、<leader>mg（multi grep）、
+        --    <leader>td / <leader>tw（toggle diagnostics / wrap）
+        --  都是在目录列表里不会用到的操作，可以接受。
+        --
+        --  操作目标优先级：有标记用标记；否则用可视选区；再否则只用光标行。
+        --  按 ? 或 g? 可随时查看当前全部键位（帮助窗口会自动包含这些项）。
+        -- ═══════════════════════════════════════════════════════════════
+
+        -- ── 标记（第二段沿用 dired 原字母）──────────────────────────
+        --  标记以「绝对路径」记录，所以 oil 刷新、改排序、增删行之后
+        --  标记依然跟着文件走，不会错位。
+        ["<leader>m"] = {
+          callback = function() require("config.oil-dired").toggle_mark() end,
+          desc = "dired: 标记/取消标记当前项（dired 的 m）",
+          mode = "n",
+        },
+        ["<leader>U"] = {
+          callback = function() require("config.oil-dired").unmark_all() end,
+          desc = "dired: 清除全部标记（dired 的 U）",
+          mode = "n",
+        },
+        ["<leader>t"] = {
+          callback = function() require("config.oil-dired").invert_marks() end,
+          desc = "dired: 反转标记（dired 的 t）",
+          mode = "n",
+        },
+        ["<leader>%m"] = {
+          callback = function() require("config.oil-dired").mark_by_pattern() end,
+          desc = "dired: 按正则标记，Lua 正则（dired 的 % m）",
+          mode = { "n", "v" },
+        },
+
+        -- ── 批量操作 ────────────────────────────────────────────────
+        ["<leader>d"] = {
+          callback = function() require("config.oil-dired").delete_marked() end,
+          desc = "dired: 暂存删除，:w 提交（dired 的 d）",
+          mode = "n",
+        },
+        ["<leader>M"] = {
+          callback = function() require("config.oil-dired").chmod() end,
+          desc = "dired: chmod（dired 的 M）",
+          mode = { "n", "v" },
+        },
+        ["<leader>T"] = {
+          callback = function() require("config.oil-dired").touch() end,
+          desc = "dired: touch（dired 的 T）",
+          mode = { "n", "v" },
+        },
+        ["<leader>Z"] = {
+          callback = function() require("config.oil-dired").compress() end,
+          desc = "dired: gzip -k 压缩（dired 的 Z）",
+          mode = { "n", "v" },
+        },
+        ["<leader>!"] = {
+          callback = function() require("config.oil-dired").shell_command() end,
+          desc = "dired: 对目标执行 shell 命令，{} = 文件名（dired 的 !）",
+          mode = { "n", "v" },
+        },
       },
       view_options = {
         -- Show files and directories that start with "."

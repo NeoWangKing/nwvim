@@ -1,6 +1,15 @@
 local map = vim.keymap.set
 
 map("n", "<space>re", ":restart<CR>")
+-- 注意：这里**不要**再把 <space> 单独映射成 ":"。
+--
+-- 空格是 leader，下面有一堆 <space>xx 系列键位。如果同时把 <space> 本身
+-- 映射成一个完整命令，Vim 每次按空格都得等 timeoutlen(500ms) 才能判断
+-- 你到底是「要执行那个命令」还是「要按某个 <space>x」；而且 which-key 的
+-- 自动触发器会先检查该键是否已被映射（见 which-key/triggers.lua 的
+-- is_mapped），发现已映射就**跳过注册**，于是按空格永远弹不出提示面板。
+--
+-- 需要进命令行：按 <leader>;（见下），或直接按 : 。
 map("n", "<space><space>x", ":source %<CR>")
 map("n", "<space>x", ":.lua<CR>")
 map("v", "<space>x", ":lua<CR>")
@@ -115,17 +124,46 @@ map("n", "<space>st", function()
 end, { desc = "Toggle terminal window (adaptive split)" })
 
 -- LSP
+--
+-- 诊断的全局显示方式在这里统一配置。
+-- （原先这段配置写在 plugins/lspconfig.lua 的 LspAttach 回调里，会在每次
+--  LSP 附加时重复执行；而 gd / K / gr / 重命名 / 代码操作这几个键位在
+--  keymaps.lua 和 lspconfig.lua 里各定义了一份。现已合并到此处。）
+vim.diagnostic.config({
+  virtual_text = false, -- 关闭行内虚拟文本，界面更清爽；用 <space>ee 查看详情
+  float = {
+    border = "rounded",
+    source = "always",
+    prefix = "",
+  },
+})
+
 vim.api.nvim_create_autocmd("LspAttach", {
   group = vim.api.nvim_create_augroup("UserLspConfig", { clear = true }),
   callback = function(ev)
     local bufnr = ev.buf
-    map("n", "gd", vim.lsp.buf.definition, { buffer = bufnr, silent = true, desc = "Go to definition" })
-    map("n", "K", vim.lsp.buf.hover, { buffer = bufnr, silent = true, desc = "Hover documentation" })
-    map("n", "<space>rn", vim.lsp.buf.rename, { buffer = bufnr, silent = true, desc = "Rename symbol" })
-    map("n", "<space>ca", vim.lsp.buf.code_action, { buffer = bufnr, silent = true, desc = "Code actions" })
-    map("n", "gr", vim.lsp.buf.references, { buffer = bufnr, silent = true, desc = "Go to references" })
-    map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, { buffer = bufnr, silent = true, desc = "Previous diagnostic" })
-    map("n", "]d", function() vim.diagnostic.jump({ count = 1 }) end, { buffer = bufnr, silent = true, desc = "Next diagnostic" })
+    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+
+    local function opt(desc)
+      return { buffer = bufnr, silent = true, desc = desc }
+    end
+
+    -- 跳转 / 补全
+    map("n", "gd", vim.lsp.buf.definition, opt("Go to definition"))
+    map("n", "K", vim.lsp.buf.hover, opt("Hover documentation"))
+    map("n", "gr", vim.lsp.buf.references, opt("Go to references"))
+    map("n", "<space>rn", vim.lsp.buf.rename, opt("Rename symbol"))
+    map("n", "<space>ca", vim.lsp.buf.code_action, opt("Code actions"))
+
+    -- 诊断
+    map("n", "<space>ee", vim.diagnostic.open_float, opt("显示当前行的诊断信息"))
+    map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, opt("Previous diagnostic"))
+    map("n", "]d", function() vim.diagnostic.jump({ count = 1 }) end, opt("Next diagnostic"))
+
+    -- 格式化：只在服务器真的支持时才绑定
+    if client and client.server_capabilities.documentFormattingProvider then
+      map("n", "<space>f", function() vim.lsp.buf.format({ async = true }) end, opt("Format buffer"))
+    end
   end,
 })
 

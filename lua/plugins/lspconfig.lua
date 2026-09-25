@@ -55,7 +55,11 @@ return {
         },
       })
 
-      vim.lsp.config('clangd', {})
+      -- 显式指定 filetypes：去掉 nvim-lspconfig 默认的
+      -- c.doxygen / cpp.doxygen 未知文件类型（会让 vim.lsp 健康检查报警）
+      vim.lsp.config('clangd', {
+        filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
+      })
       vim.lsp.config('pyright', {})
       -- 为 astro 服务器定义配置
       vim.lsp.config("astro", {
@@ -75,7 +79,10 @@ return {
       -- 显式启用 astro 服务器（确保它被启动）
       vim.lsp.enable("astro")
       vim.lsp.config('texlab', {})
-      vim.lsp.config('marksman', {})
+      -- 显式指定 filetypes：去掉默认的 markdown.mdx 未知文件类型
+      vim.lsp.config('marksman', {
+        filetypes = { "markdown" },
+      })
       vim.lsp.config('ts_ls', {})
       vim.lsp.config('cssls', {})
 

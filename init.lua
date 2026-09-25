@@ -83,7 +83,10 @@ vim.g.loaded_python3_provider = 0
 vim.g.loaded_ruby_provider = 0
 
 vim.lsp.config("julials", { settings = {} })
-vim.lsp.enable("julials")
+-- Julia 未安装的平台（如当前 Linux）自动跳过，避免 vim.lsp 健康检查报警
+if vim.fn.executable("julia") == 1 then
+  vim.lsp.enable("julials")
+end
 vim.lsp.enable('astro')
 vim.lsp.enable('clangd')
 vim.lsp.enable('cssls')

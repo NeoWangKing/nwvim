@@ -29,7 +29,7 @@ return {
       },
       notify = {
         view = "notify",
-        background_colour = "#181818",   -- 你的背景色
+        background_colour = "#1F2124",   -- 与 p3-blue 主背景一致
       },
       lsp = {
         progress = {

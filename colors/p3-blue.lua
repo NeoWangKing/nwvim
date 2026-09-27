@@ -26,7 +26,7 @@ local p = {
   bg_float  = "#26282C",  -- 浮窗
   bg_elev   = "#2E3136",  -- 抬升表面
   bg_hover  = "#35393F",
-  bg_sel    = "#3E434A",  -- 选中
+  bg_sel    = "#36445A",  -- 选中（蓝调；原 #3E434A 是中性灰，易与 CursorLine 混）
   bg_cur    = "#272A2E",  -- 当前行
 
   -- 边框
@@ -90,8 +90,8 @@ apply({
   ColorColumn       = { bg = p.bg_alt },
   CursorLineNr      = { fg = p.ice, bold = true },
   LineNr            = { fg = p.linenr },
-  LineNrAbove       = { fg = p.linenr },
-  LineNrBelow       = { fg = p.linenr },
+  LineNrAbove       = { fg = p.fg_faint },
+  LineNrBelow       = { fg = p.fg_faint },
   SignColumn        = { fg = p.fg_muted, bg = p.bg },
   FoldColumn        = { fg = p.border, bg = p.bg },
   Folded            = { fg = p.fg_muted, bg = p.bg_elev },
@@ -105,13 +105,16 @@ apply({
   Substitute        = { fg = p.bg, bg = p.rose },
   MatchParen        = { fg = p.cyan, bold = true, underline = true },
 
-  Pmenu             = { fg = p.fg, bg = p.bg_float },
+  Pmenu             = { fg = p.fg, bg = p.bg_elev },
   PmenuSel          = { fg = p.bg, bg = p.blue, bold = true },
-  PmenuKind         = { fg = p.ice, bg = p.bg_float },
+  PmenuKind         = { fg = p.ice, bg = p.bg_elev },
   PmenuKindSel      = { fg = p.bg, bg = p.blue },
-  PmenuExtra        = { fg = p.fg_muted, bg = p.bg_float },
+  PmenuExtra        = { fg = p.fg_muted, bg = p.bg_elev },
   PmenuExtraSel     = { fg = p.bg, bg = p.blue },
-  PmenuSbar         = { bg = p.bg_elev },
+  -- 补全里匹配到的字符（Neovim 0.11+）：高亮以看清匹配位置
+  PmenuMatch        = { fg = p.ice, bg = p.bg_elev, bold = true },
+  PmenuMatchSel     = { fg = p.bg, bg = p.blue, bold = true },
+  PmenuSbar         = { bg = p.bg_float },
   PmenuThumb        = { bg = p.border },
   WildMenu          = { fg = p.bg, bg = p.cyan },
 
@@ -329,10 +332,10 @@ apply({
 
 -- ── 差异 / Git ─────────────────────────────────────────────────────────
 apply({
-  DiffAdd     = { fg = p.green, bg = "#1B342E" },
-  DiffChange  = { fg = p.amber, bg = "#383222" },
-  DiffDelete  = { fg = p.red, bg = "#391F24" },
-  DiffText    = { fg = p.fg_bright, bg = "#4A4030" },
+  DiffAdd     = { fg = p.green, bg = "#304241" },
+  DiffChange  = { fg = p.amber, bg = "#323E51" },
+  DiffDelete  = { fg = p.red, bg = "#443337" },
+  DiffText    = { fg = p.fg_bright, bg = "#4E5C72" },
   Added       = { fg = p.green },
   Removed     = { fg = p.red },
   Changed     = { fg = p.amber },

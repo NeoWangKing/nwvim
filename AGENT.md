@@ -138,6 +138,29 @@ lua/plugins/*.lua        每个插件一个文件，按功能命名
 
 ---
 
+### 换机器要做的事（清单）
+
+配置本身是跨平台的（平台差异都收在 `platform.lua`），但有几样东西
+**不在仓库里**，换机器必须手动补。漏掉的表现往往是**静默不工作**：
+
+| 项目 | 怎么补 | 漏了会怎样 |
+|---|---|---|
+| treesitter parser | `:TSInstall markdown markdown_inline latex` | 标题渲染与 LaTeX 语法检查全不工作。`latex-check.lua` 检测到会 notify 一次并给出确切命令（实测过） |
+| `fzf` | 发行版包管理器 | 词典补全的**词频排序失效**——插件在 `cmd ~= "fzf"` 分支里会用自己的模糊分重排，`--tiebreak=index` 那套白做 |
+| `rg` | 同上 | Telescope 的 live_grep / multi-grep 不可用 |
+| ImageMagick（`magick`） | 同上 | image.nvim 行内图片不渲染（`processor = "magick_cli"`） |
+| Nerd Font | 装字体 + 改 Ghostty 配置 | 图标变方块或回退字形。**Ghostty 配置是独立仓库**（`~/.config/ghostty`），换机器要一并带走 |
+| `utftex` | `brew install utftex`（Linux 用发行版包管理器） | **当前不需要**：公式渲染已关。仅当把 `latex.enabled` 改回 true 才要装 |
+| `python3` | 系统自带即可 | 仅 `scripts/build-dictionary.py`（重建词库顺序）需要，一次性 |
+
+**平台的判断一律走 `platform.lua`**，不要在插件文件里写 `has("mac")`。
+
+> ⚠ **Ghostty 字体**（独立仓库，最容易漏）：
+> 用的是 `JetBrainsMono Nerd Font Mono`，**不是**普通 `JetBrains Mono`——
+> 后者只含 powerline 区（U+E0B0 起），不含 nf-md / nf-dev 等区间，
+> 图标会靠系统字体回退显示。家族名/样式名要用 `ghostty +list-fonts` 查，
+> 不能照抄 `fc-list` 的写法（两者命名规则不同）。
+
 ## 4. 补全系统（`lua/plugins/blink.lua`）
 
 按**文件类型**分成两套行为：

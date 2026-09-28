@@ -124,6 +124,21 @@ items = vim.tbl_values(items)   -- 取出时变成哈希序，顺序在这一步
 
 三者缺一不可：**少了 ①②，fzf 给的顺序就是错的；少了 ③，正确的顺序会在插件内部丢掉。**
 
+> ⚠ **fzf 是硬性前提**——虽然 `blink-cmp-dictionary` 把外部命令当成可选的
+> （没有 fzf 就退回 `rg` / `grep`，再没有就纯 Lua）。
+>
+> 原因是插件源码里的这段分支：
+> ```lua
+> elseif cmd == "fzf" then
+>   -- fzf output is already sorted, just take first max_items   ← 信任顺序
+> else
+>   top_items = utils.get_top_matches(separated_items, prefix, max_items)  ← 自己重排
+> ```
+> **只要命令不是 fzf，插件就会用自己的模糊打分重排**，① 排好的词频顺序
+> 连同 `--tiebreak=index` 一起失效。前缀过滤还在，只是顺序又变回乱的了。
+>
+> 所以换机器（尤其挪到 Linux）时记得装 fzf，否则表现为「顺序怎么又变差了」。
+
 ### ⚠️ 重复词会变成重复候选
 
 插件是把目录里所有文件**拼在一起**的，**不会去重**。

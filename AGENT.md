@@ -380,6 +380,7 @@ require("config.oil-dired").chmod()
 | 18 | 把 `?` 绑成帮助键会夺走反向搜索 | 帮助只绑 `g?`；oil 帮助窗口会自动收录自定义键位，不需要额外快捷键 |
 | 19 | 以为 `skip_confirm_for_simple_edits = true` 会让删除也不再确认。实测 oil 对**删除**仍弹 `DELETE xxx [Y]es/[N]o`，`:w` 后必须按 `y`，否则看起来像「`:w` 没生效」 | `<leader>d` 暂存后 `:w`，再按 `y` 确认；改名不需要确认 |
 | 20 | 把 leader（`<space>`）本身也映射成一个完整命令。副作用不只是 `timeoutlen` 延迟——which-key 的 `Triggers.add` 会先跑 `is_mapped()`，**该键已被映射就不注册触发器**，导致提示面板永远弹不出来 | leader 键不要另作他用；本仓库已移除 `map("n", "<space>", ":")` |
+| 21 | `blink-cmp-dictionary` 内部用 `items[match] = {...}` 建字典、再 `vim.tbl_values()` 取出，**候选项顺序在这一步被销毁**。所以任何依赖「provider 返回顺序」的排序方案都会在 blink 层失效。实测：fzf 返回的顺序完全正确，但 blink 显示的是 `physicianless`/`importunate` 这类生僻词 | 用插件的 `separate_output`（有序）记录排名，经 `data.documentation` 透传，在 `transform_items` 里写成 `sortText`，并把 `fuzzy.sorts` 改成 `{ 'sort_text', 'score' }` |
 
 ---
 

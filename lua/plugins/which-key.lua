@@ -26,7 +26,7 @@ return {
         { '<leader>t', group = '+toggle' },
         { '<leader>e', group = '+explorer' },
         { '<leader>g', group = '+git/goto' },
-        { '<leader>m', group = '+misc' },
+        { '<leader>m', group = '+misc/markdown' },
         { '<leader>c', group = '+code (LSP)' },
         { '<leader>r', group = '+rename/restart' },
         { '<leader>f', group = '+format' },

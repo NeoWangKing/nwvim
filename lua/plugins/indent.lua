@@ -1,3 +1,4 @@
+-- indent.lua - 缩进线，颜色用 HIGHLIGHT_SETUP 钩子定义。
 return {
   {
     "lukas-reineke/indent-blankline.nvim",

@@ -1,23 +1,9 @@
--- ═══════════════════════════════════════════════════════════════════════
---  lua/config/platform.lua — 跨平台适配层
---
---  这套配置要在 macOS / Linux / Windows 三端共用，凡是「命令名、调用方式、
---  路径规则」随平台变化的地方，都统一收敛到这里，避免散落在各处写
---  has("mac") 判断。
---
---  用法：
---    local P = require("config.platform")
---    P.is_mac / P.is_linux / P.is_windows
---    P.open_path(path)          -- 用系统默认程序打开文件/目录/URL
---    P.open_with_app(app, path) -- 用指定程序打开（仅 macOS 有意义，其余平台自动退化为默认程序）
---    P.clipboard_available()    -- 当前平台能否与系统剪贴板互通
---    P.pathsep                  -- 路径分隔符
--- ═══════════════════════════════════════════════════════════════════════
+-- platform.lua - 跨平台适配层：命令名、调用方式、路径差异都收在这里。
+-- macOS / Linux / Windows 三端共用，插件文件里不要再写 has("mac") 判断。
 
 local M = {}
 
--- ── 平台识别 ───────────────────────────────────────────────────────────
--- 优先用 uv.os_uname()（比 vim.fn.has 更可靠，尤其在 WSL / MSYS 环境下）
+-- 平台识别。优先 uv.os_uname()，WSL/MSYS 下比 has() 可靠。
 local sysname = (vim.uv or vim.loop).os_uname().sysname or ""
 
 M.is_windows = sysname:match("Windows") ~= nil or vim.fn.has("win32") == 1
@@ -30,10 +16,7 @@ M.is_wsl = M.is_linux
 
 M.pathsep = M.is_windows and "\\" or "/"
 
--- ── 打开文件 / 目录 / URL ──────────────────────────────────────────────
--- vim.ui.open() 是 Neovim 0.10+ 内置的跨平台实现：
---   macOS → open        Linux → xdg-open        Windows → start
--- 返回一个 vim.SystemObj，失败返回 nil，所以失败时要自己兜底提示。
+-- 打开文件/目录/URL：优先 vim.ui.open，失败时按平台退化到 open/xdg-open/start。
 ---@param path string
 ---@return boolean ok
 function M.open_path(path)
@@ -55,9 +38,8 @@ function M.open_path(path)
   return vim.fn.jobstart(cmd, { detach = true }) > 0
 end
 
--- 用指定程序打开。只有 macOS 的 `open -a` 支持「按应用名打开」，
--- 其余平台没有等价能力，直接退化为系统默认程序。
----@param app string      应用名，如 "Skim" / "Preview"
+-- 按应用名打开只有 macOS 的 open -a 支持，其余平台退化为默认程序。
+---@param app string
 ---@param path string
 ---@return boolean ok
 function M.open_with_app(app, path)
@@ -72,12 +54,7 @@ function M.supports_app_named_open()
   return M.is_mac and vim.fn.executable("open") == 1
 end
 
--- ── 剪贴板 ─────────────────────────────────────────────────────────────
--- unnamedplus 的实际依赖：
---   macOS   → pbcopy / pbpaste   （系统自带，Neovim 原生支持）
---   Windows → clip.exe           （系统自带，Neovim 原生支持）
---   Linux   → 需要 xclip / xsel / wl-copy 三者之一，装了才有
--- 没有可用工具却启用 unnamedplus，yank 会报错或静默失效，所以必须先探测。
+-- 剪贴板：macOS/Windows 系统自带；Linux 需要 xclip/xsel/wl-copy 之一，缺工具启用会报错或静默失效。
 ---@return boolean
 function M.clipboard_available()
   if M.is_mac or M.is_windows then return true end
@@ -87,18 +64,16 @@ function M.clipboard_available()
   return false
 end
 
--- ── 可执行文件查找（跨平台，带 Windows 扩展名）────────────────────────
+-- 可执行文件查找（跨平台）
 ---@param name string
 ---@return boolean
 function M.has_exe(name)
   return vim.fn.executable(name) == 1
 end
 
--- ── 异步执行命令并收集输出（不依赖 shell 重定向，跨平台安全）──────────
--- 原来的写法是拼 `cmd > tmpfile 2>&1`，这在 PowerShell / cmd.exe 下语法并不通用。
--- 改为走 jobstart 的回调收集，然后把结果交给上层处理。
+-- 异步执行命令并收集输出；`cmd > file 2>&1` 的重定向写法在 Windows 下不通用，所以走 jobstart 回调。
 ---@param cmd string            交给 shell 解析的命令串
----@param opts table|nil        { cwd = string, on_exit = fun(code, lines) }
+---@param opts table|nil
 ---@return number job_id
 function M.run_capture(cmd, opts)
   opts = opts or {}
@@ -123,22 +98,13 @@ function M.run_capture(cmd, opts)
   })
 end
 
--- ── 查看器偏好 ─────────────────────────────────────────────────────────
--- 按优先级排列，取第一个「已安装」的。
---
--- 图片和 PDF 是两类不同的工具，不要混：
---   feh / nsxiv / sxiv / imv  只用于看图，不能开 PDF
---   zathura / mupdf / llpp    是 PDF 阅读器（部分也能看图）
--- 这里刻意优先轻量命令行查看器，而不是 xdg-open —— 后者会拉起桌面环境
--- 注册的重型程序（GNOME 上通常是 evince，KDE 上是 okular）。
---
--- 想改偏好：把想用的工具挪到数组最前面，或在本地直接覆盖，例如
---   require("config.platform").VIEWERS.pdf.linux = { { kind = "exe", name = "mupdf" } }
+-- 查看器按列表顺序取第一个已安装的轻量工具；图片和 PDF 分开维护，看图工具不能开 PDF。
+-- 想改偏好：把工具挪到列表最前，或覆盖 VIEWERS.pdf.linux 这类字段。
 M.VIEWERS = {
   pdf = {
     mac     = { { kind = "app", name = "Skim" }, { kind = "app", name = "Preview" } },
     linux   = {
-      { kind = "exe", name = "evince" },   -- 你在 Linux 上用的就是这个，放最前
+      { kind = "exe", name = "evince" },   -- 平时用这个，放最前
       { kind = "exe", name = "zathura" },
       { kind = "exe", name = "mupdf" },
       { kind = "exe", name = "llpp" },
@@ -208,22 +174,9 @@ function M.open_with_viewer(viewer, path)
   return vim.fn.jobstart({ viewer.name, path }, { detach = true }) > 0
 end
 
--- ── Git 拉取协议（决定 lazy.nvim 装插件走 SSH 还是 HTTPS）──────────────
--- 判定顺序（优先级从高到低）：
---   1. vim.g.git_protocol 显式指定 "ssh" / "https" / "ssh443"
---   2. ~/.ssh 下有私钥，且实测能通过 GitHub 认证        → SSH（22 端口）
---   3. 22 不通、但 ssh.github.com:443 通                → SSH over 443
---   4. 其余                                             → HTTPS（不设 url_format）
---
--- 为什么不能只看「有没有密钥文件」：
---   a) 有私钥 ≠ GitHub 认这把钥匙（可能这把钥匙是给别的服务用的）；
---   b) 22 端口在国内常被封，那种情况下 SSH 克隆会直接失败，
---      结果是一个插件都装不上，而且报错很难看出是协议问题。
--- 所以这里实测一次，并把结论缓存起来，之后启动不再探测。
---
--- 缓存位置：stdpath("state")/gitproto
--- 想重新探测（例如换了网络、刚配好密钥）：删掉那个文件即可。
--- 想强制协议：在 init.lua 里写 vim.g.git_protocol = "ssh443"
+-- lazy.nvim 装插件走 SSH 还是 HTTPS：先看 vim.g.git_protocol，再看能否通过 GitHub SSH 认证，最后试 443 端口。
+-- 只看有没有私钥文件不可靠（钥匙可能不被 GitHub 认、22 端口可能被封），所以实测一次，结果缓存在 gitproto。
+-- 重新探测就删 stdpath("state")/gitproto；强制协议在 init.lua 设 vim.g.git_protocol。
 
 -- GitHub 的 SSH 认证测试
 local function ssh_github_ok(host, port)
@@ -240,9 +193,7 @@ local function ssh_github_ok(host, port)
   args[#args + 1] = "git@" .. host
 
   local out = vim.fn.system(args) or ""
-  -- ⚠ 关键：`ssh -T git@github.com` 认证成功时退出码也是 1
-  --   （因为 GitHub 不提供 shell），所以只能看输出文本，
-  --   不能用 vim.v.shell_error 判断，否则永远得到「失败」。
+  -- ssh -T git@github.com 认证成功时退出码也是 1（GitHub 不提供 shell），只能看输出文本判断。
   return out:match("successfully authenticated") ~= nil
 end
 
@@ -258,7 +209,7 @@ end
 
 local GITPROTO_CACHE = vim.fn.stdpath("state") .. "/gitproto"
 
---- 探测当前环境适合用哪种协议
+-- 探测当前环境适合用哪种协议
 ---@return "ssh"|"ssh443"|"https"
 function M.detect_git_protocol()
   if not has_ssh_private_key() then return "https" end
@@ -281,8 +232,7 @@ function M.detect_git_protocol()
   return proto
 end
 
---- 给 lazy.nvim 用的 git.url_format
---- 返回 nil 表示保持默认（HTTPS），不要传空表进去
+-- 给 lazy.nvim 用；返回 nil 表示保持默认 HTTPS。
 ---@return string|nil
 function M.git_url_format()
   local forced = vim.g.git_protocol
@@ -296,21 +246,10 @@ function M.git_url_format()
   return nil
 end
 
--- ── 英文词典（写文章时的单词补全）──────────────────────────────────────
--- 供 blink-cmp-dictionary 使用。词典格式很简单：每行一个小写单词。
---
--- 这里只认「随仓库走的词典目录」：~/.config/nvim/dictionary/
--- 该目录里的所有 .txt 都会被读取（详见 dictionary/README.md）。
---
--- 为什么不顺便用系统词典（/usr/share/dict/words 等）：
---   1) 三端情况差异大 —— macOS 自带，Linux 看发行版，Windows 根本没有；
---   2) 更关键的是插件把多个词典文件「拼接而不去重」，
---      系统词表和仓库里的 english-words.txt 内容高度重叠，
---      同时启用会在候选里出现大量重复项。
---   仓库里带一份，反而在三端行为完全一致。
---
--- 想改路径：在 init.lua 里设 vim.g.dictionary_dir = "/your/path"
----@return string[] 词典目录列表（不存在则为空表，上层据此决定是否启用词典源）
+-- 英文词典目录：blink-cmp-dictionary 会读取目录下所有 .txt，每行一个单词。
+-- 不用系统词典：三端差异大，且插件多文件拼接不去重，和仓库词表重叠会产生大量重复候选。
+-- 想改路径：在 init.lua 设 vim.g.dictionary_dir。
+---@return string[]
 function M.dictionary_dirs()
   local dir = vim.g.dictionary_dir or (vim.fn.stdpath("config") .. "/dictionary")
   return vim.fn.isdirectory(dir) == 1 and { dir } or {}

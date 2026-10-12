@@ -1,3 +1,4 @@
+-- dashboard.lua - 启动页：常用入口和最近项目。
 return {
   "glepnir/dashboard-nvim",
   dependencies = { "nvim-tree/nvim-web-devicons" },
@@ -45,7 +46,7 @@ return {
         limit = 10,
         cwd = true,
       },
-      -- 最近项目自定义显示格式 (结构类似，如果有需要)
+      -- 最近项目显示格式，有需要再调
       projects = {
         limit = 10,
         cwd = true,

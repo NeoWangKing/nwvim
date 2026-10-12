@@ -1,3 +1,4 @@
+-- treesitter.lua - 只负责安装 parser；高亮和缩进用 Neovim 内置。
 return {
   {
     'nvim-treesitter/nvim-treesitter',

@@ -1,3 +1,4 @@
+-- nvim-tree.lua - 文件树。
 return {
   "nvim-tree/nvim-tree.lua",
   version = "*",
@@ -10,13 +11,14 @@ return {
     vim.g.loaded_netrwPlugin = 1
 
     require("nvim-tree").setup({
-      auto_reload_on_write = false, -- 已有 filesystem watcher，避免保存时整树重载
+      auto_reload_on_write = false, -- 有 filesystem watcher，不用保存时整树重载
       git = {
         enable = true,
         ignore = false,
       },
       update_focused_file = {
-        enable = false, -- 避免每次 BufEnter 都在大项目里定位文件、递归展开目录
+        -- 大工程里每次 BufEnter 定位文件会卡，关掉
+        enable = false,
       },
       renderer = {
         group_empty = false,

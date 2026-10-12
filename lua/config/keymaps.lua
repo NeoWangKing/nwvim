@@ -1,15 +1,8 @@
 local map = vim.keymap.set
 
 map("n", "<space>re", ":restart<CR>")
--- 注意：这里**不要**再把 <space> 单独映射成 ":"。
---
--- 空格是 leader，下面有一堆 <space>xx 系列键位。如果同时把 <space> 本身
--- 映射成一个完整命令，Vim 每次按空格都得等 timeoutlen(500ms) 才能判断
--- 你到底是「要执行那个命令」还是「要按某个 <space>x」；而且 which-key 的
--- 自动触发器会先检查该键是否已被映射（见 which-key/triggers.lua 的
--- is_mapped），发现已映射就**跳过注册**，于是按空格永远弹不出提示面板。
---
--- 需要进命令行：按 <leader>;（见下），或直接按 : 。
+-- 不要把 <space> 单独映射成 ":"：空格是 leader，映射后每次按空格都要等 timeoutlen，
+-- 而且 which-key 看到该键已被映射会跳过注册。进命令行用 <leader>; 或直接按 :。
 map("n", "<space><space>x", ":source %<CR>")
 map("n", "<space>x", ":.lua<CR>")
 map("v", "<space>x", ":lua<CR>")
@@ -29,7 +22,7 @@ vim.keymap.set('n', 'P', function()
   vim.fn.cursor(vim.fn.line('.'), save_col)
 end, { desc = "Paste forwards and keep the cursor col" })
 
--- better movement
+-- 折行时按显示行移动
 map("n", "j", function()
   return vim.v.count == 0 and "gj" or "j"
 end, { expr = true, silent = true, desc = "Down (wrap-aware)" })
@@ -123,12 +116,7 @@ map("n", "<space>st", function()
   end
 end, { desc = "Toggle terminal window (adaptive split)" })
 
--- LSP
---
--- 诊断的全局显示方式在这里统一配置。
--- （原先这段配置写在 plugins/lspconfig.lua 的 LspAttach 回调里，会在每次
---  LSP 附加时重复执行；而 gd / K / gr / 重命名 / 代码操作这几个键位在
---  keymaps.lua 和 lspconfig.lua 里各定义了一份。现已合并到此处。）
+-- LSP：诊断显示方式和键位统一在这里注册一份，不要再到 lspconfig 里重复定义。
 vim.diagnostic.config({
   virtual_text = false, -- 关闭行内虚拟文本，界面更清爽；用 <space>ee 查看详情
   float = {
@@ -167,7 +155,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
   end,
 })
 
--- toggle
+-- 开关
 map("n", "<space>td", function()
   vim.diagnostic.enable(not vim.diagnostic.is_enabled())
 end, { desc = "Toggle diagnostics" })
@@ -182,7 +170,7 @@ end, { desc = "Toggle wrap (keep cursor)" })
 -- oil.nvim
 map("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
 
--- go to file
+-- 跳转到光标下的文件
 map("n", "<space>gf", function()
   local cfile = vim.fn.expand("<cfile>")
   if cfile == "" then
@@ -196,11 +184,11 @@ map("n", "<space>gf", function()
   line = tonumber(line) or 1
   col = tonumber(col) or 1
 
-  -- 1. 先尝试直接打开（支持绝对/相对路径）
+  -- 先直接打开（支持绝对/相对路径）
   if vim.fn.filereadable(file) == 1 then
     vim.cmd.edit({ file, bang = true })
   else
-    -- 2. 在 'path' 选项中查找
+    -- 再在 'path' 里查找
     local found = vim.fn.findfile(file)
     if found ~= "" then
       vim.cmd.edit(found)

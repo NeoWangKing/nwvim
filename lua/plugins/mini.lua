@@ -1,3 +1,4 @@
+-- mini.lua - 目前只启用 mini.ai 文本对象，其余按需开启。
 return {
   {
     'nvim-mini/mini.nvim',

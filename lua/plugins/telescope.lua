@@ -1,3 +1,4 @@
+-- telescope.lua - 模糊查找：文件/文本/buffer/帮助。
 return {
   {
     "nvim-telescope/telescope.nvim",

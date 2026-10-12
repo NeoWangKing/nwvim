@@ -1,3 +1,4 @@
+-- bufferline.lua - 顶部标签栏。
 return {
   {
     'akinsho/bufferline.nvim',
@@ -14,7 +15,7 @@ return {
           max_prefix_length = 15,
           tab_size = 18,
 
-          diagnostics = false, -- LSP 诊断不再实时刷新 tabline，减少重绘
+          diagnostics = false, -- 诊断不实时刷新 tabline，减少重绘
           diagnostics_indicator = function(count, level)
             local icon = level:match("error") and " " or " "
             return " " .. icon .. count
@@ -27,7 +28,7 @@ return {
           show_close_icon = true,
 
           hover = {
-            enabled = false, -- 关闭 tabline 悬停弹窗，减少 CursorHold 处理
+            enabled = false, -- 关闭悬停弹窗，减少 CursorHold 处理
             delay = 200,
             reveal = {'close'}
           },
@@ -46,7 +47,7 @@ return {
 
           highlights = {
             buffer_selected = { bold = true, italic = false, },
-            -- 分隔线：淡钢蓝（原来是 catppuccin 的 lavender #B4BEFE，已换成 P3 色）
+            -- 分隔线用 P3 淡钢蓝
             separator = { fg = "#414549", },
           },
         }

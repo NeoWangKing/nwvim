@@ -1,15 +1,5 @@
--- ═══════════════════════════════════════════════════════════════════════
---  p3-blue.lua — P3 Blue · Neovim 主题
---
---  取色自 ~/Pictures/wallpaper/结城理.jpg，与 Ghostty / yazi / Starship /
---  Zed 使用同一套调色板，保证跨工具观感一致。
---
---  安装位置：~/.config/nvim/colors/p3-blue.lua
---  启用方式：vim.cmd.colorscheme("p3-blue")
---
---  说明：init.lua 里的 set_transparent() 会在 ColorScheme 事件后把若干组的
---        bg 改成 none，让 Ghostty 的壁纸透上来 —— 本主题不与之冲突。
--- ═══════════════════════════════════════════════════════════════════════
+-- p3-blue.lua - P3 Blue 主题，与 Ghostty/yazi/Starship/Zed 共用同一调色板。
+-- init.lua 的 set_transparent 会在 ColorScheme 后清掉部分组的 bg。
 
 if vim.g.colors_name then vim.cmd("highlight clear") end
 if vim.fn.exists("syntax_on") == 1 then vim.cmd("syntax reset") end
@@ -18,32 +8,29 @@ vim.o.termguicolors = true
 vim.o.background = "dark"
 vim.g.colors_name = "p3-blue"
 
--- ── 调色板 ─────────────────────────────────────────────────────────────
+-- 调色板
 local p = {
   -- 背景层（由深到浅）
-  bg        = "#1F2124",  -- 主背景（与 Zed 一致的中性灰底）
+  bg        = "#1F2124",  -- 主背景
   bg_alt    = "#191B1E",  -- 状态栏 / 标签栏
   bg_float  = "#26282C",  -- 浮窗
   bg_elev   = "#2E3136",  -- 抬升表面
   bg_hover  = "#35393F",
-  bg_sel    = "#36445A",  -- 选中（蓝调；原 #3E434A 是中性灰，易与 CursorLine 混）
+  bg_sel    = "#36445A",  -- 选中
   bg_cur    = "#272A2E",  -- 当前行
 
   -- 边框
   border    = "#3E434A",
   border_dim= "#414549",
-  linenr    = "#8D95A1",  -- 行号（4.50:1，与 SignColumn 同亮度）
+  linenr    = "#8D95A1",  -- 行号
 
   -- 文本层级
   fg        = "#C3D3E6",  -- 正文
   fg_bright = "#E1EBF6",
   fg_dim    = "#A9C1DE",
-  fg_muted  = "#8D95A1",  -- 次要文字（对比度 4.5:1）
-  fg_faint  = "#868C93",  -- 注释级（最坏底 4.01:1）
-  -- 虚影文字（blink.cmp 的行内补全预览）。
-  -- ⚠ 这个键曾经漏定义，导致下面的 `p.fg_ghost or p.border` 静默退化成
-  --   边框色 #3E434A（对比度仅 1.37:1），虚影几乎不可见。
-  --   虚影要「看得清但明显比正文淡」，故取 4.50:1（与 fg_muted 同档）。
+  fg_muted  = "#8D95A1",  -- 次要文字
+  fg_faint  = "#868C93",  -- 注释
+  -- blink.cmp 虚影：要看得清但明显比正文淡；漏定义会被 or 静默降级成边框色
   ghost     = "#8D95A1",
 
   -- 蓝色阶（主色调）
@@ -72,7 +59,7 @@ local function apply(t)
   end
 end
 
--- ── 编辑器基础界面 ─────────────────────────────────────────────────────
+-- 编辑器基础界面
 apply({
   Normal            = { fg = p.fg, bg = p.bg },
   NormalNC          = { fg = p.fg, bg = p.bg },
@@ -111,7 +98,7 @@ apply({
   PmenuKindSel      = { fg = p.bg, bg = p.blue },
   PmenuExtra        = { fg = p.fg_muted, bg = p.bg_elev },
   PmenuExtraSel     = { fg = p.bg, bg = p.blue },
-  -- 补全里匹配到的字符（Neovim 0.11+）：高亮以看清匹配位置
+  -- 补全匹配字符高亮
   PmenuMatch        = { fg = p.ice, bg = p.bg_elev, bold = true },
   PmenuMatchSel     = { fg = p.bg, bg = p.blue, bold = true },
   PmenuSbar         = { bg = p.bg_float },
@@ -157,7 +144,7 @@ apply({
   CursorLineSign    = { bg = p.bg_cur },
 })
 
--- ── 传统语法组 ─────────────────────────────────────────────────────────
+-- 传统语法组
 apply({
   Comment           = { fg = p.fg_faint, italic = true },
   Constant          = { fg = p.sand },
@@ -196,7 +183,7 @@ apply({
   Todo              = { fg = p.bg, bg = p.ice, bold = true },
 })
 
--- ── Treesitter 捕获 ────────────────────────────────────────────────────
+-- Treesitter 捕获
 apply({
   ["@variable"]              = { fg = p.fg },
   ["@variable.builtin"]      = { fg = p.violet, italic = true },
@@ -294,7 +281,7 @@ apply({
   ["@none"]                  = {},
 })
 
--- ── LSP / 诊断 ─────────────────────────────────────────────────────────
+-- LSP / 诊断
 apply({
   DiagnosticError              = { fg = p.red },
   DiagnosticWarn               = { fg = p.amber },
@@ -330,7 +317,7 @@ apply({
   LspInlayHint                 = { fg = p.fg_faint, bg = p.bg_alt, italic = true },
 })
 
--- ── 差异 / Git ─────────────────────────────────────────────────────────
+-- 差异 / Git
 apply({
   DiffAdd     = { fg = p.green, bg = "#304241" },
   DiffChange  = { fg = p.amber, bg = "#323E51" },
@@ -351,7 +338,7 @@ apply({
   GitSignsDelete = { fg = p.red },
 })
 
--- ── 常用插件 ───────────────────────────────────────────────────────────
+-- 常用插件
 apply({
   -- Telescope
   TelescopeNormal         = { fg = p.fg, bg = p.bg_float },
@@ -397,8 +384,7 @@ apply({
   NvimTreeGitMerge        = { fg = p.sand },
   NvimTreeGitStaged       = { fg = p.green },
 
-  -- bufferline（背景会被 init.lua 的 set_transparent 统一去掉，
-  -- 这里保留 bg 作为「切换到其他主题体系时的兜底」；fg 生效）
+  -- bufferline 背景会被 set_transparent 去掉，这里保留 bg 作为换主题时的兜底
   BufferLineFill                = { bg = p.bg_alt },
   BufferLineBackground          = { fg = p.fg_faint, bg = p.bg_alt },
   BufferLineBufferVisible       = { fg = p.fg_muted, bg = p.bg_alt },
@@ -571,7 +557,7 @@ apply({
   MiniFilesNormal           = { fg = p.fg, bg = p.bg_float },
   MiniFilesCursorLine       = { bg = p.bg_sel },
 
-  -- nvim-cmp（保险起见也定义）
+  -- nvim-cmp 兼容组
   CmpDocumentation       = { fg = p.fg, bg = p.bg_float },
   CmpDocumentationBorder = { fg = p.border, bg = p.bg_float },
   CmpItemAbbr            = { fg = p.fg },

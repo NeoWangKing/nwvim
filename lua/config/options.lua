@@ -1,4 +1,4 @@
--- lua/config/options.lua
+-- options.lua - 编辑器基础选项。
 
 vim.g.have_nerd_font = true
 vim.opt.termguicolors = true
@@ -67,10 +67,7 @@ vim.opt.path:append("**")
 vim.opt.selection = "inclusive"
 vim.opt.mouse = "a"
 vim.opt.mousemodel = "popup"
--- 剪贴板
--- unnamedplus 在 macOS / Windows 由 Neovim 原生支持（pbcopy / clip.exe），
--- 但在 Linux 上需要 xclip / xsel / wl-copy 之一；没有工具却启用它，
--- yank 会报错或静默失效。所以先探测再决定。
+-- 剪贴板：unnamedplus 在 macOS/Windows 原生支持；Linux 需要 xclip/xsel/wl-copy，缺工具就跳过。
 local P = require("config.platform")
 if P.clipboard_available() then
   vim.opt.clipboard:append("unnamedplus")
@@ -97,8 +94,8 @@ vim.opt.wildignorecase = true
 -- 差异模式
 vim.opt.diffopt:append("linematch:60")
 
--- 折叠：使用 indent，简单且性能更好
--- 如需 Treesitter 折叠，需要在 lazy.nvim 加载插件之后再设置
+-- 折叠用 indent，简单且性能更好。
+-- 要 Treesitter 折叠的话，需要在 lazy.nvim 加载之后再设置：
 -- vim.opt.foldmethod = "expr"
 -- vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 vim.opt.foldmethod = "indent"

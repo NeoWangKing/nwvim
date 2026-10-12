@@ -1,3 +1,4 @@
+-- autocmds.lua - 自动命令：yank 高亮、按文件类型的缩进、gnuplot 注释符。
 local augroup = vim.api.nvim_create_augroup("UserConfig", { clear = true })
 
 vim.api.nvim_create_autocmd('TextYankPost', {
@@ -8,7 +9,7 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 	end,
 })
 
--- C, C++, Python, JSON: 4 spaces
+-- C / C++ / Python / JSON：4 空格缩进
 vim.api.nvim_create_autocmd("FileType", {
   group = augroup,
   pattern = { "c", "cpp", "python", "json" },
@@ -20,7 +21,7 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
--- Markdown: 3 spaces
+-- Markdown：3 空格缩进
 vim.api.nvim_create_autocmd("FileType", {
   group = augroup,
   pattern = "markdown",

@@ -1,3 +1,4 @@
+-- noice.lua - 弹出式命令行、通知和 LSP 提示。
 return {
   {
     "folke/noice.nvim",
@@ -8,7 +9,7 @@ return {
     },
     opts = {
       cmdline = {
-        view = "cmdline_popup",   -- 弹出式命令行，也可用 "cmdline"（传统底部）
+        view = "cmdline_popup",   -- 弹出式命令行（想用传统底部就改 "cmdline"）
         format = {
           cmdline = { pattern = "^:", icon = "", lang = "vim" },
           search_down = { kind = "search", pattern = "^/", icon = " ", lang = "regex" },
@@ -25,7 +26,7 @@ return {
         view_warn = "notify",
       },
       popupmenu = {
-        backend = "nui",   -- 或用 "cmp" 与 nvim-cmp 联动
+        backend = "nui",   -- 补全菜单交给 nui 渲染
       },
       notify = {
         view = "notify",
@@ -53,7 +54,7 @@ return {
         lsp_doc_border = true,
         command_palette = true,   -- 命令行和补全菜单联动
       },
-      views = {},   -- 留空使用默认，想自定义再填
+      views = {},   -- 留空用默认，想自定义再填
     },
   }
 }

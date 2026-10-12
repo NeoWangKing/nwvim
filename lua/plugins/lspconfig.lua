@@ -1,19 +1,18 @@
+-- lspconfig.lua - Mason 安装 LSP 服务器并按需启用。
 return {
   {
     "neovim/nvim-lspconfig",
     dependencies = {
-      -- mason 已从 williamboman 迁移到 mason-org 组织，用新名避免依赖旧重定向。
-      -- 注意要和 lua/plugins/mason.lua 里写的名字一致，否则会被当成两个插件。
+      -- Mason 已迁到 mason-org 组织
       "mason-org/mason.nvim",
       "mason-org/mason-lspconfig.nvim",
       "saghen/blink.cmp",
     },
     config = function()
-      -- 1. 初始化 Mason
+      -- 初始化 Mason
       require("mason").setup()
 
-      -- 2. 初始化 mason-lspconfig
-      --    automatic_enable 会自动为新安装的服务器调用 vim.lsp.enable()
+      -- 新装好的服务器自动 vim.lsp.enable
       require("mason-lspconfig").setup({
         ensure_installed = {
           "lua_ls",
@@ -33,19 +32,19 @@ return {
         },
       })
 
-      -- 3. 获取 blink.cmp 的能力集，并合并 Neovim 原生能力
+      -- blink.cmp 的能力集合并进原生能力
       local capabilities = vim.tbl_deep_extend(
         "force",
         vim.lsp.protocol.make_client_capabilities(),
         require("blink.cmp").get_lsp_capabilities()
       )
 
-      -- 4. 为所有服务器配置一个全局的能力集
+      -- 全局能力集
       vim.lsp.config("*", {
         capabilities = capabilities,
       })
 
-      -- 5. 为特定的服务器（如 lua_ls）进行额外配置
+      -- lua_ls 额外设置
       vim.lsp.config("lua_ls", {
         settings = {
           Lua = {
@@ -55,17 +54,15 @@ return {
         },
       })
 
-      -- 显式指定 filetypes：去掉 nvim-lspconfig 默认的
-      -- c.doxygen / cpp.doxygen 未知文件类型（会让 vim.lsp 健康检查报警）
+      -- 去掉默认的 c.doxygen / cpp.doxygen 未知文件类型
       vim.lsp.config('clangd', {
         filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
       })
       vim.lsp.config('pyright', {})
-      -- 为 astro 服务器定义配置
+      -- astro 动态找项目里的 TypeScript 路径
       vim.lsp.config("astro", {
         init_options = {
           typescript = {
-            -- 动态获取项目内的 TypeScript 路径
             tsdk = vim.fs.joinpath(
               vim.fs.root(0, { "package.json", "node_modules" }) or vim.fn.getcwd(),
               "node_modules",
@@ -76,20 +73,17 @@ return {
         },
       })
 
-      -- 显式启用 astro 服务器（确保它被启动）
+      -- 显式启用 astro
       vim.lsp.enable("astro")
       vim.lsp.config('texlab', {})
-      -- 显式指定 filetypes：去掉默认的 markdown.mdx 未知文件类型
+      -- 去掉默认的 markdown.mdx 未知文件类型
       vim.lsp.config('marksman', {
         filetypes = { "markdown" },
       })
       vim.lsp.config('ts_ls', {})
       vim.lsp.config('cssls', {})
 
-      -- 注意：LSP 的键位绑定与诊断显示配置已统一移到 lua/config/keymaps.lua。
-      -- 原先这里有第二个 LspAttach 回调，和 keymaps.lua 里的那个重复定义了
-      -- gd / K / gr / 重命名 / 代码操作，且把 vim.diagnostic.config 放在回调里
-      -- （每次附加服务器都会重跑一遍）。现在只保留服务器本身的配置。
+      -- LSP 键位和诊断显示统一在 config/keymaps.lua，这里只配服务器
     end,
   }
 }

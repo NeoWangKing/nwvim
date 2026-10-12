@@ -1,3 +1,4 @@
+-- multigrep.lua - 自定义 Telescope picker：rg 关键词 + glob，两个空格分隔。
 local pickers = require('telescope.pickers')
 local finders = require('telescope.finders')
 local make_entry = require('telescope.make_entry')

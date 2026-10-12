@@ -1,17 +1,15 @@
+-- lualine.lua - 状态栏，P3 Blue 泡泡主题。
 return {
   {
     'nvim-lualine/lualine.nvim',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
     config = function()
-      -- Bubbles config for lualine
-      -- Author: lokesh-krishna
-      -- MIT license, see LICENSE for more details.
-
+      -- bubbles 主题改自 lokesh-krishna 的配置，MIT license
       -- stylua: ignore
       -- P3 Blue 泡泡主题（与 colors/p3-blue.lua 同一套调色板）
       local bubbles_theme = {
         normal = {
-          a = { fg = '#1F2124', bg = '#5CB5DD' },  -- 模式徽章：P3 冰蓝
+          a = { fg = '#1F2124', bg = '#5CB5DD' },  -- 模式徽章
           b = { fg = '#C3D3E6', bg = '#2E3136' },
           c = { fg = '#C3D3E6' },
         },
@@ -39,7 +37,7 @@ return {
           lualine_a = { { 'mode', separator = { left = '' }, right_padding = 2 } },
           lualine_b = { 'filename', 'branch' },
           lualine_c = {
-            '%=', --[[ add your center components here in place of this comment ]]
+            '%=', -- 中间组件加在这里
           },
           lualine_x = {},
           lualine_y = { 'filetype', 'progress' },

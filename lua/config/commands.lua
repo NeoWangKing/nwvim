@@ -1,17 +1,9 @@
--- lua/config/commands.lua
--- 用户自定义命令：OpenPDF, Pdflatex, Xelatex, Lualatex, Run
---
--- 【跨平台说明】
--- · 打开 PDF：走 config/platform.lua。macOS 支持「按应用名打开」（Skim / Preview），
---   Linux / Windows 没有等价能力，自动退化为系统默认程序（xdg-open / start）。
--- · 执行命令：不再拼接 `cd "dir" && ...` 和 `> file 2>&1`，这类 POSIX shell 语法
---   在 Windows 的 cmd.exe / PowerShell 下并不通用。改用 jobstart 的 cwd 选项
---   与 stdout/stderr 回调，三端行为一致。
+-- commands.lua - 用户自定义命令：OpenPDF / OpenImage / Pdflatex / Xelatex / Lualatex / Run。
+-- 打开方式走 config/platform.lua；执行命令用 jobstart 的 cwd 和回调，不拼 POSIX shell 语法，Windows 下同样可用。
 
 local P = require("config.platform")
 
--- 获取当前 buffer 的 .tex 文件路径（如果可用）
--- 返回完整路径，如果不符合要求则返回 nil, 错误信息
+-- 取当前 buffer 的 .tex 文件路径；不是 .tex 或无文件名时返回错误。
 local function get_current_tex_file()
   local bufname = vim.api.nvim_buf_get_name(0)
   if bufname == "" then
@@ -23,18 +15,8 @@ local function get_current_tex_file()
   return bufname, nil
 end
 
--- ---------- 打开 PDF ----------
--- 默认阅读器由 config/platform.lua 的 pick_viewer("pdf") 按平台自动挑选：
---   macOS   → Skim（装了就用，支持自动刷新）→ Preview
---   Linux   → zathura → mupdf → llpp → evince → okular → xpdf
---   Windows → SumatraPDF → Edge
--- 一个都没找到时，退化为系统默认程序（open / xdg-open / start）。
---
--- 之所以不直接用 xdg-open：它会拉起桌面环境注册的默认程序，
--- GNOME 上通常是 evince、KDE 上是 okular，都是重型 GUI，启动慢。
--- 这里优先轻量查看器，正是为了避开这一点。
---
--- 显式指定阅读器的选项只在 macOS 上有意义（`open -a` 才支持按应用名打开）：
+-- OpenPDF：按平台挑第一个已安装的轻量阅读器，避开 xdg-open 拉起的重型默认程序。
+-- -skim / -preview 只在 macOS 有意义（open -a 才支持按应用名打开）。
 local VIEWERS = {}
 if P.supports_app_named_open() then
   VIEWERS = {
@@ -127,12 +109,7 @@ end, {
   desc = "打开 PDF 文件（按平台自动选择轻量阅读器）",
 })
 
--- ---------- 打开图片 ----------
--- 与 PDF 同理，按平台挑轻量看图工具：
---   macOS   → Preview
---   Linux   → feh → nsxiv → sxiv → imv → qiv → eog
---   Windows → nomacs → 画图
--- 注意 feh 只能看图、不能开 PDF，所以这里的列表和上面的 pdf 是分开维护的。
+-- OpenImage：按平台挑轻量看图工具；feh 这类看图工具不能开 PDF，所以列表和 PDF 分开维护。
 local IMAGE_EXTS = {
   png = true, jpg = true, jpeg = true, gif = true, bmp = true, webp = true,
   tif = true, tiff = true, svg = true, ico = true, avif = true, heic = true,
@@ -173,7 +150,7 @@ end, {
   desc = "用平台上的轻量看图程序打开图片（Linux: feh/nsxiv，macOS: Preview）",
 })
 
--- ---------- 编译 LaTeX ----------
+-- 编译 LaTeX
 local function compile_tex(filepath, compiler)
   local dir = vim.fn.fnamemodify(filepath, ":h")
   local filename = vim.fn.fnamemodify(filepath, ":t")
@@ -182,10 +159,7 @@ local function compile_tex(filepath, compiler)
   print("编译: " .. filename)
 
   -- 用 jobstart 的 cwd 代替 `cd "dir" && ...`，Windows 下同样成立。
-  --
-  -- ⚠ 这里不能加 detach = true：一旦 detach，on_exit 就永远不会被调用
-  --   （Neovim 文档明确说明 detach 的进程退出时不触发回调）。
-  --   原写法正是踩了这个坑，导致「编译成功 / 失败」的提示从来没出现过。
+  -- 不能加 detach = true：detach 的进程退出时不触发 on_exit，编译结果提示会永远不出现。
   local lines = {}
   local function push(data)
     if not data then return end
@@ -277,9 +251,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
   end,
 })
 
--- ---------- Run：异步执行外部命令，输出放入 quickfix ----------
--- 原来用 `cmd > tmpfile 2>&1` 依赖 shell 重定向，在 PowerShell / cmd.exe 下
--- 语法并不一致；改为用 jobstart 回调收集输出，再写文件交给 quickfix。
+-- Run：异步执行命令，输出收集后写临时文件进 quickfix；shell 重定向写法在 Windows 下不通用。
 vim.api.nvim_create_user_command("Run", function(opts)
   local cmd = opts.args
   if not cmd or cmd == "" then

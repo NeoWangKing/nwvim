@@ -1,12 +1,16 @@
 -- multigrep.lua - 自定义 Telescope picker：rg 关键词 + glob，两个空格分隔。
-local pickers = require('telescope.pickers')
-local finders = require('telescope.finders')
-local make_entry = require('telescope.make_entry')
-local conf = require('telescope.config').values
-
 local M = {}
 
-local live_multigrep = function()
+-- 键位在 config/keymaps.lua（<leader>mg）。telescope 是懒加载的，所以这里的
+-- require 必须放在函数体内：调用时才触发加载，模块顶层 require 会在启动期就把它拉起来。
+---@param opts table|nil
+function M.live(opts)
+  local pickers = require('telescope.pickers')
+  local finders = require('telescope.finders')
+  local make_entry = require('telescope.make_entry')
+  local conf = require('telescope.config').values
+
+  -- 注意：这里不能漏掉 local —— 写成 `opts = opts or {}` 会写进 _G
   opts = opts or {}
   opts.cwd = opts.cwd or vim.uv.cwd()
 
@@ -44,11 +48,6 @@ local live_multigrep = function()
     previewer = conf.grep_previewer(opts),
     sorter = require('telescope.sorters').empty(),
   }):find()
-end
-
-M.setup = function()
-  -- live_multigrep()
-  vim.keymap.set('n', '<space>mg', live_multigrep, { desc = "Multi Grep" })
 end
 
 return M

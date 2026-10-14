@@ -14,8 +14,6 @@ M.is_linux   = sysname == "Linux" and not M.is_windows
 M.is_wsl = M.is_linux
   and (vim.env.WSL_DISTRO_NAME ~= nil or vim.env.WSL_INTEROP ~= nil)
 
-M.pathsep = M.is_windows and "\\" or "/"
-
 -- 打开文件/目录/URL：优先 vim.ui.open，失败时按平台退化到 open/xdg-open/start。
 ---@param path string
 ---@return boolean ok
@@ -64,39 +62,114 @@ function M.clipboard_available()
   return false
 end
 
--- 可执行文件查找（跨平台）
----@param name string
----@return boolean
-function M.has_exe(name)
-  return vim.fn.executable(name) == 1
-end
+-- 注：原来这里有个 run_capture（收集输出后回调），:Run 重做成流式输出窗口之后没人用了，
+-- 已删除。要跑命令并拿输出看 lua/config/run.lua（它需要流式，不是一次性收集）。
+-- ── 文件属性操作 ──────────────────────────────────────────────
+-- chmod / touch / gzip 这三个命令在 Windows 上没有：以前直接调命令，
+-- 在 Windows 上会静默失败（dired 层的 M / T / Z 三个键等于坏掉）。
+-- 实现收在这里，上层（config/oil-dired.lua）只负责取目标、报结果。
+--
+-- 三个函数都用 on_done(ok, err) 回调收尾：有的实现要等子进程，
+-- 调用方不关心同步还是异步。
 
--- 异步执行命令并收集输出；`cmd > file 2>&1` 的重定向写法在 Windows 下不通用，所以走 jobstart 回调。
----@param cmd string            交给 shell 解析的命令串
----@param opts table|nil
----@return number job_id
-function M.run_capture(cmd, opts)
-  opts = opts or {}
-  local lines = {}
-  local function push(data)
-    if not data then return end
-    -- jobstart 的分块以 "\n" 分隔，末尾可能是空串
-    for _, l in ipairs(data) do
-      if l ~= "" then lines[#lines + 1] = l end
+--- 修改权限。mode 可以是八进制（"644" / "755"）或符号模式（"+x"，仅 POSIX）。
+---@param paths string[]
+---@param mode string
+---@param on_done fun(ok: boolean, err?: string)
+function M.chmod(paths, mode, on_done)
+  local numeric = tonumber(mode, 8)
+  if numeric then
+    -- 八进制模式走 libuv：三端一致，也不用起子进程
+    for _, p in ipairs(paths) do
+      local ok, err = vim.uv.fs_chmod(p, numeric)
+      if not ok then
+        return on_done(false, tostring(err))
+      end
     end
+    return on_done(true)
   end
-  return vim.fn.jobstart(cmd, {
-    shell = true,                -- 允许命令里带管道、参数、引号
-    cwd = opts.cwd,
-    stdout_buffered = true,
-    stderr_buffered = true,
-    on_stdout = function(_, data) push(data) end,
-    on_stderr = function(_, data) push(data) end,
+
+  if M.is_windows or vim.fn.executable("chmod") == 0 then
+    return on_done(false, "本平台不支持符号权限（如 +x），请用 644 / 755 这类八进制写法")
+  end
+  vim.fn.jobstart(vim.list_extend({ "chmod", mode }, paths), {
     on_exit = function(_, code)
-      if opts.on_exit then opts.on_exit(code, lines) end
+      on_done(code == 0, code ~= 0 and ("chmod 退出码 " .. code) or nil)
     end,
   })
 end
+
+--- 创建空文件或刷新时间戳（dired 的 T）。纯 libuv，三端一致。
+---@param paths string[]
+---@param on_done fun(ok: boolean, err?: string)
+function M.touch(paths, on_done)
+  local now = os.time()
+  for _, p in ipairs(paths) do
+    if not vim.uv.fs_stat(p) then
+      local fd, err = vim.uv.fs_open(p, "a", 420) -- 0644
+      if not fd then
+        return on_done(false, tostring(err))
+      end
+      vim.uv.fs_close(fd)
+    end
+    vim.uv.fs_utime(p, now, now)
+  end
+  on_done(true)
+end
+
+--- gzip -k 逐个压缩（保留原文件，dired 的 Z）。
+--- Windows 环境通常没有 gzip，这种情况直接报错，别静默什么都不做。
+---@param paths string[]
+---@param on_done fun(ok: boolean, err?: string)
+function M.compress(paths, on_done)
+  if vim.fn.executable("gzip") == 0 then
+    return on_done(false, "本平台没有 gzip 命令（Windows 可装 7-Zip，或用 Git Bash 自带的 gzip）")
+  end
+
+  local left, failed = #paths, 0
+  for _, p in ipairs(paths) do
+    vim.fn.jobstart({ "gzip", "-k", p }, {
+      on_exit = function(_, code)
+        if code ~= 0 then failed = failed + 1 end
+        left = left - 1
+        if left == 0 then
+          on_done(failed == 0, failed > 0 and (failed .. " 个文件压缩失败") or nil)
+        end
+      end,
+    })
+  end
+end
+
+--- 把目录插到 PATH 最前面（已经在 PATH 里就不重复插）。
+--- 用途：让「启动早期就要按名字找可执行文件」的组件（如 LSP 服务器）拿到路径，
+--- 而不必等某个插件加载完再补 PATH。PATH 的分隔符三端不同，收在这里判断。
+---@param dir string
+---@return boolean added
+function M.prepend_path(dir)
+  if vim.fn.isdirectory(dir) == 0 then return false end
+
+  local pathsep = M.is_windows and ";" or ":"
+  local target = vim.fs.normalize(dir)
+  for _, p in ipairs(vim.split(vim.env.PATH or "", pathsep, { plain = true })) do
+    if vim.fs.normalize(p) == target then return false end
+  end
+
+  vim.env.PATH = target .. pathsep .. (vim.env.PATH or "")
+  return true
+end
+
+-- 「最小可运行命令」里随平台变的片段（:SayHello 的提示用，见 config/hello.lua）：
+--   bin_prefix / exe_suffix —— 编译产物怎么拼：`./main` 还是 `.\main.exe`
+--     Windows 上用 `.\` 前缀，是因为 PowerShell 不认裸文件名，而 cmd 也接受 `.\main.exe`，
+--     这样两边的 shell 都能直接粘贴。
+--   python —— Windows 上叫 python，其余平台是 python3
+--   opener —— 凭文件名打开东西的命令名（和上面 VIEWERS 的用途不同：那个是挑具体程序）
+M.CMD = {
+  bin_prefix = M.is_windows and ".\\" or "./",
+  exe_suffix = M.is_windows and ".exe" or "",
+  python = M.is_windows and "python" or "python3",
+  opener = M.is_mac and "open" or (M.is_windows and "start" or "xdg-open"),
+}
 
 -- 查看器按列表顺序取第一个已安装的轻量工具；图片和 PDF 分开维护，看图工具不能开 PDF。
 -- 想改偏好：把工具挪到列表最前，或覆盖 VIEWERS.pdf.linux 这类字段。

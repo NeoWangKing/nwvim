@@ -1,25 +1,31 @@
+-- keymaps.lua - 全局键位 + LSP 键位（LspAttach 集中在一处）。
+--
+-- 约定：全局键位只写在这个文件里（插件自己缓冲区里的键位除外，例如 oil 的
+-- lua/plugins/oil-nvim.lua keymaps 表）。统一写 <leader> 而不是 <space>，
+-- 两者等价，但写 <leader> 才能一眼看出这是 leader 键位。
 local map = vim.keymap.set
 
-map("n", "<space>re", ":restart<CR>")
--- 不要把 <space> 单独映射成 ":"：空格是 leader，映射后每次按空格都要等 timeoutlen，
+-- 重载 / 执行
+map("n", "<leader>re", ":restart<CR>", { desc = "Restart Neovim" })
+-- 不要把 <leader> 单独映射成 ":"：空格是 leader，映射后每次按空格都要等 timeoutlen，
 -- 而且 which-key 看到该键已被映射会跳过注册。进命令行用 <leader>; 或直接按 :。
-map("n", "<space><space>x", ":source %<CR>")
-map("n", "<space>x", ":.lua<CR>")
-map("v", "<space>x", ":lua<CR>")
+map("n", "<leader><leader>x", ":source %<CR>", { desc = "Source current file" })
+map("n", "<leader>x", ":.lua<CR>", { desc = "Run current line as Lua" })
+map("v", "<leader>x", ":lua<CR>", { desc = "Run selection as Lua" })
+map("n", "<leader>;", ":", { desc = "Command line" })
+map("i", "jk", "<Esc>", { desc = "Leave insert mode" })
 
-map("n", "<leader>;", ":")
-map("i", "jk", "<Esc>")
-
-vim.keymap.set('n', 'p', function()
-  local save_col = vim.fn.col('.')
-  vim.cmd('normal! p')
-  vim.fn.cursor(vim.fn.line('.'), save_col)
+-- 粘贴保持光标列：vim 原生 p/P 会把光标移到被粘贴内容的开头，改回原来的列
+map("n", "p", function()
+  local save_col = vim.fn.col(".")
+  vim.cmd("normal! p")
+  vim.fn.cursor(vim.fn.line("."), save_col)
 end, { desc = "Paste and keep the cursor col" })
 
-vim.keymap.set('n', 'P', function()
-  local save_col = vim.fn.col('.')
-  vim.cmd('normal! P')
-  vim.fn.cursor(vim.fn.line('.'), save_col)
+map("n", "P", function()
+  local save_col = vim.fn.col(".")
+  vim.cmd("normal! P")
+  vim.fn.cursor(vim.fn.line("."), save_col)
 end, { desc = "Paste forwards and keep the cursor col" })
 
 -- 折行时按显示行移动
@@ -35,7 +41,7 @@ map("n", "N", "Nzzzv", { desc = "Previous search result (centered)" })
 map("n", "<C-d>", "<C-d>zz", { desc = "Half page down (centered)" })
 map("n", "<C-u>", "<C-u>zz", { desc = "Half page up (centered)" })
 
-map({ "n", "x" }, "<space>d", '"_d', { desc = "Delete without yanking" })
+map({ "n", "x" }, "<leader>d", '"_d', { desc = "Delete without yanking" })
 
 map("n", "<A-Up>", ":resize +2<CR>", { desc = "Increase window height" })
 map("n", "<A-Down>", ":resize -2<CR>", { desc = "Decrease window height" })
@@ -52,69 +58,48 @@ map("v", ">", ">gv", { desc = "Indent right and reselect" })
 
 map("n", "J", "mzJ`z", { desc = "Join lines and keep cursor position" })
 
--- nvim-tree
-map("n", "<space>e", ":NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
+-- 文件树 / lazygit（两者都是懒加载，靠 :NvimTreeToggle / :LazyGit 命令触发）
+map("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
+map("n", "<leader>gg", "<cmd>LazyGit<CR>", { desc = "LazyGit" })
 
--- lazygit
-map("n", "<space>gg", "<cmd>LazyGit<CR>", { desc = "LazyGit" })
+-- 终端（逻辑在 config/terminal.lua）
+map("n", "<leader>st", function()
+  require("config.terminal").toggle()
+end, { desc = "Toggle terminal window (adaptive split)" })
 
 -- buffer
-map("n", "<space>bn", ":bnext<CR>", { desc = "Next buffer" })
-map("n", "<space>bp", ":bprevious<CR>", { desc = "Previous buffer" })
-map("n", "<space>bc", ":BufferLinePickClose<CR>", { desc = "Pick a buffer to close" })
-map("n", "<space>bch", ":BufferLineCloseLeft<CR>", { desc = "Close buffers to the left" })
-map("n", "<space>bcl", ":BufferLineCloseRight<CR>", { desc = "Close buffers to the right" })
+map("n", "<leader>bn", ":bnext<CR>", { desc = "Next buffer" })
+map("n", "<leader>bp", ":bprevious<CR>", { desc = "Previous buffer" })
+map("n", "<leader>bc", ":BufferLinePickClose<CR>", { desc = "Pick a buffer to close" })
+map("n", "<leader>bch", ":BufferLineCloseLeft<CR>", { desc = "Close buffers to the left" })
+map("n", "<leader>bcl", ":BufferLineCloseRight<CR>", { desc = "Close buffers to the right" })
 
 -- split
-map("n", "<space>sv", ":vsplit<CR>", { desc = "Split window vertically" })
-map("n", "<space>sh", ":split<CR>", { desc = "Split window horizontally" })
+map("n", "<leader>sv", ":vsplit<CR>", { desc = "Split window vertically" })
+map("n", "<leader>sh", ":split<CR>", { desc = "Split window horizontally" })
 
-local term_buf = nil
+-- Telescope（懒加载：:Telescope 命令触发加载；下面调 builtin / multigrep 的
+-- 回调会在 require 时把插件拉起来，所以这里不需要 keys 触发）
+map("n", "<leader>ff", "<cmd>Telescope find_files<CR>", { desc = "查找文件" })
+map("n", "<leader>fg", "<cmd>Telescope live_grep<CR>", { desc = "全项目搜索文本" })
+map("n", "<leader>fb", "<cmd>Telescope buffers<CR>", { desc = "切换 buffer" })
+map("n", "<leader>fh", "<cmd>Telescope help_tags<CR>", { desc = "查找帮助文档" })
 
-map("n", "<space>st", function()
-  if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
-    local win = vim.fn.bufwinnr(term_buf)
-    if win > 0 then
-      -- 已有窗口，直接跳转
-      vim.api.nvim_set_current_win(vim.fn.win_getid(win))
-      return
-    end
-  end
+map("n", "<leader>en", function()
+  require("telescope.builtin").find_files {
+    cwd = vim.fn.stdpath("config"),
+  }
+end, { desc = "查找本配置目录的文件" })
 
-  -- 判断当前窗口宽高比
-  local width = vim.o.columns
-  local height = vim.o.lines
-  local horizontal = width > (3 * height)  -- 宽 > 高，从右侧打开
+map("n", "<leader>ep", function()
+  require("telescope.builtin").find_files {
+    cwd = vim.fs.joinpath(vim.fn.stdpath("data"), "lazy"),
+  }
+end, { desc = "查找插件目录的文件" })
 
-  if term_buf and vim.api.nvim_buf_is_valid(term_buf) then
-    -- buffer 存在，但没有窗口，打开新的分屏窗口
-    if horizontal then
-      vim.cmd("vsplit")
-      -- 可以设置列宽，例如取当前窗口的 30%
-      local col_width = math.min(50, math.floor(width * 0.3))
-      vim.api.nvim_win_set_width(0, col_width)
-    else
-      vim.cmd("below split")
-      local row_height = math.min(10, math.floor(height * 0.3))
-      vim.api.nvim_win_set_height(0, row_height)
-    end
-    vim.api.nvim_set_current_buf(term_buf)
-  else
-    -- 创建新的终端 buffer
-    if horizontal then
-      vim.cmd("vsplit")
-      vim.cmd.term()
-      local col_width = math.min(50, math.floor(width * 0.3))
-      vim.api.nvim_win_set_width(0, col_width)
-    else
-      vim.cmd("below split")
-      vim.cmd.term()
-      local row_height = math.min(10, math.floor(height * 0.3))
-      vim.api.nvim_win_set_height(0, row_height)
-    end
-    term_buf = vim.api.nvim_get_current_buf()
-  end
-end, { desc = "Toggle terminal window (adaptive split)" })
+map("n", "<leader>mg", function()
+  require("config.telescope.multigrep").live()
+end, { desc = "Multi Grep（两个空格分隔关键词与 glob）" })
 
 -- LSP：诊断显示方式和键位统一在这里注册一份，不要再到 lspconfig 里重复定义。
 vim.diagnostic.config({
@@ -136,31 +121,34 @@ vim.api.nvim_create_autocmd("LspAttach", {
       return { buffer = bufnr, silent = true, desc = desc }
     end
 
-    -- 跳转 / 补全
+    -- 跳转 / 悬浮文档。
+    -- ⚠ 重命名、代码操作、引用**不在这里绑**：Neovim 0.11+ 内置了
+    --   grn 重命名 / gra 代码操作 / grr 引用 / gri 实现 / grt 类型定义 /
+    --   grx 运行 codelens / gO 文档符号（见 :h lsp-default-mappings），
+    --   而且是全局无条件设置的（不依赖 LspAttach）。
+    --   以前这里的 gr / <leader>rn / <leader>ca 与之重复，还会让按 gr 时等 timeoutlen，已删。
+    --   内置**没有** gd 和 K，所以这两个仍由本配置提供。
     map("n", "gd", vim.lsp.buf.definition, opt("Go to definition"))
     map("n", "K", vim.lsp.buf.hover, opt("Hover documentation"))
-    map("n", "gr", vim.lsp.buf.references, opt("Go to references"))
-    map("n", "<space>rn", vim.lsp.buf.rename, opt("Rename symbol"))
-    map("n", "<space>ca", vim.lsp.buf.code_action, opt("Code actions"))
 
     -- 诊断
-    map("n", "<space>ee", vim.diagnostic.open_float, opt("显示当前行的诊断信息"))
+    map("n", "<leader>ee", vim.diagnostic.open_float, opt("显示当前行的诊断信息"))
     map("n", "[d", function() vim.diagnostic.jump({ count = -1 }) end, opt("Previous diagnostic"))
     map("n", "]d", function() vim.diagnostic.jump({ count = 1 }) end, opt("Next diagnostic"))
 
     -- 格式化：只在服务器真的支持时才绑定
     if client and client.server_capabilities.documentFormattingProvider then
-      map("n", "<space>f", function() vim.lsp.buf.format({ async = true }) end, opt("Format buffer"))
+      map("n", "<leader>f", function() vim.lsp.buf.format({ async = true }) end, opt("Format buffer"))
     end
   end,
 })
 
 -- 开关
-map("n", "<space>td", function()
+map("n", "<leader>td", function()
   vim.diagnostic.enable(not vim.diagnostic.is_enabled())
 end, { desc = "Toggle diagnostics" })
 
-map("n", "<space>tw", function()
+map("n", "<leader>tw", function()
   local saved_cursor = vim.api.nvim_win_get_cursor(0)
   vim.wo.wrap = not vim.wo.wrap
   vim.api.nvim_win_set_cursor(0, saved_cursor)
@@ -171,7 +159,7 @@ end, { desc = "Toggle wrap (keep cursor)" })
 map("n", "-", "<CMD>Oil<CR>", { desc = "Open parent directory" })
 
 -- 跳转到光标下的文件
-map("n", "<space>gf", function()
+map("n", "<leader>gf", function()
   local cfile = vim.fn.expand("<cfile>")
   if cfile == "" then
     vim.notify("光标下没有文件名", vim.log.levels.WARN)

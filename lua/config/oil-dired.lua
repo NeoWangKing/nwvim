@@ -1,10 +1,14 @@
 -- oil-dired.lua - 给 oil.nvim 补上 Emacs dired 的标记 + 批量执行。
--- oil 本身已经是 wdired（改名 = 编辑行，:w 提交），这里只补 m / u / U / t / %m 标记和批量命令。
+-- oil 本身已经是 wdired（改名 = 编辑行，:w 提交），这里只补 m / U / t / %m 标记和批量命令
+-- （dired 的 u 没做：把 u 从 vim 的撤销手里抢走不划算，见 AGENT.md 陷阱 17）。
 -- 做不到的：dired 的 i（子目录插入当前 buffer）、( / ) 多目录跳转、k 隐藏行，都是 oil 架构限制。
+-- 文件操作（chmod / touch / gzip）一律走 config/platform.lua：那边的三个命令在
+-- Windows 上没有，只有平台层知道该怎么替代。
 
 local M = {}
 
 local oil = require("oil")
+local P = require("config.platform")
 
 local mark_ns = vim.api.nvim_create_namespace("oil_dired_marks")
 local HL_GROUP = "OilDiredMark"
@@ -90,17 +94,6 @@ function M.toggle_mark()
   else
     m[path] = true
   end
-  M.render(bufnr)
-end
-
--- dired 的 u：取消光标所在行的标记
-function M.unmark()
-  local bufnr = vim.api.nvim_get_current_buf()
-  if not is_oil_buffer(bufnr) then return end
-  local dir = oil.get_current_dir(bufnr)
-  local entry = oil.get_entry_on_line(bufnr, vim.fn.line("."))
-  if not entry or entry.name == ".." or not dir then return end
-  marks(bufnr)[dir .. entry.name] = nil
   M.render(bufnr)
 end
 
@@ -232,25 +225,27 @@ local function run_each(argv_of, desc)
   vim.notify(string.format("%s：对 %s 执行中…", desc, label), vim.log.levels.INFO)
 end
 
--- 对全部目标一次性执行（chmod / touch 这类可接多文件参数的命令）
-local function run_bulk(cmd, desc)
-  local paths, label = M.targets()
-  if #paths == 0 then
-    vim.notify("没有可操作的目标（先 m 标记，或选中若干行）", vim.log.levels.WARN)
-    return
+-- 取目标 → 交给 platform.lua 执行 → 统一报结果并刷新目录。
+-- 没有目标时先提示，别让用户敲完权限串才发现没选东西。
+local function warn_no_targets()
+  vim.notify("没有可操作的目标（先用 <leader>m 标记，或在可视模式下选中若干行）", vim.log.levels.WARN)
+  return false
+end
+
+--- 生成「执行完通知 + 刷新」的回调
+---@param desc string
+---@param label string
+local function reporter(desc, label)
+  return function(ok, err)
+    vim.schedule(function()
+      if ok then
+        vim.notify(string.format("%s：已处理 %s", desc, label), vim.log.levels.INFO)
+      else
+        vim.notify(string.format("%s 失败：%s", desc, err or "未知错误"), vim.log.levels.ERROR)
+      end
+      refresh()
+    end)
   end
-  vim.fn.jobstart(vim.list_extend({ cmd }, paths), {
-    on_exit = function(_, code)
-      vim.schedule(function()
-        if code ~= 0 then
-          vim.notify(string.format("%s 失败（退出码 %d）", desc, code), vim.log.levels.ERROR)
-        else
-          vim.notify(string.format("%s：已处理 %s", desc, label), vim.log.levels.INFO)
-        end
-        refresh()
-      end)
-    end,
-  })
 end
 
 -- dired 命令（! / M / T / Z / D）
@@ -277,34 +272,27 @@ end
 
 -- dired 的 M：chmod
 function M.chmod()
-  vim.ui.input({ prompt = "权限（如 644 / 755 / +x）: " }, function(mode)
+  local paths, label = M.targets()
+  if #paths == 0 then return warn_no_targets() end
+
+  vim.ui.input({ prompt = string.format("对 %s 设置权限（644 / 755 / +x）: ", label) }, function(mode)
     if not mode or mode == "" then return end
-    local paths, _ = M.targets()
-    if #paths == 0 then
-      vim.notify("没有可操作的目标", vim.log.levels.WARN)
-      return
-    end
-    vim.fn.jobstart(vim.list_extend({ "chmod", mode }, paths), {
-      on_exit = function(_, code)
-        vim.schedule(function()
-          if code ~= 0 then
-            vim.notify("chmod 失败", vim.log.levels.ERROR)
-          else
-            vim.notify(string.format("chmod %s：%d 个文件", mode, #paths), vim.log.levels.INFO)
-          end
-          refresh()
-        end)
-      end,
-    })
+    P.chmod(paths, mode, reporter("chmod " .. mode, label))
   end)
 end
 
 -- dired 的 T：touch
-function M.touch() run_bulk("touch", "touch") end
+function M.touch()
+  local paths, label = M.targets()
+  if #paths == 0 then return warn_no_targets() end
+  P.touch(paths, reporter("touch", label))
+end
 
 -- dired 的 Z：gzip 压缩（-k 保留原文件）
 function M.compress()
-  run_each(function(p) return "gzip -k " .. vim.fn.shellescape(p) end, "gzip")
+  local paths, label = M.targets()
+  if #paths == 0 then return warn_no_targets() end
+  P.compress(paths, reporter("gzip -k", label))
 end
 
 -- 暂存删除：删行不落盘，:w 才提交。目标同样走标记 > 选区 > 光标行，只改缓冲区且可 u 撤销。

@@ -1,45 +1,29 @@
 -- telescope.lua - 模糊查找：文件/文本/buffer/帮助。
+--
+-- 懒加载：键位统一在 config/keymaps.lua（用 <cmd>Telescope ...<CR> 的形式），
+-- cmd 触发会自动把它拉起来。启动期不再为 telescope + plenary + fzf-native 买单
+-- （fzf-native 是编译好的 .so，load_extension 那一下并不便宜）。
 return {
   {
     "nvim-telescope/telescope.nvim",
     dependencies = {
       "nvim-lua/plenary.nvim",
-      { 'nvim-telescope/telescope-fzf-native.nvim', build = 'make' },
+      { "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
     },
-    lazy = false,
+    cmd = "Telescope",
     config = function()
-      require('telescope').setup({
+      require("telescope").setup({
         pickers = {
           find_files = {
-            theme = "ivy"
-          }
+            theme = "ivy",
+          },
         },
         extensions = {
-          fzf = {}
+          fzf = {},
         },
       })
 
-      require('telescope').load_extension('fzf')
-
-      vim.keymap.set("n", "<space>ff", require('telescope.builtin').find_files)
-      vim.keymap.set("n", "<space>fg", require('telescope.builtin').live_grep)
-      vim.keymap.set("n", "<space>fb", require('telescope.builtin').buffers)
-      vim.keymap.set("n", "<space>fh", require('telescope.builtin').help_tags)
-
-      vim.keymap.set("n", "<space>en", function()
-        require('telescope.builtin').find_files {
-          cwd = vim.fn.stdpath("config")
-        }
-      end)
-
-      vim.keymap.set("n", "<space>ep", function()
-        require('telescope.builtin').find_files {
-          cwd = vim.fs.joinpath(vim.fn.stdpath("data"), "lazy")
-        }
-      end)
-
-      require('config.telescope.multigrep').setup()
-
+      require("telescope").load_extension("fzf")
     end,
-  }
+  },
 }

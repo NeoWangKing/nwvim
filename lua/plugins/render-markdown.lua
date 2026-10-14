@@ -4,6 +4,8 @@ return {
     'MeanderingProgrammer/render-markdown.nvim',
     -- 只在 markdown 加载，不占启动时间
     ft = { 'markdown' },
+    -- :RenderMarkdown 在没有 markdown 缓冲区时也能用（否则会报命令不存在）
+    cmd = "RenderMarkdown",
 
     dependencies = {
       'nvim-treesitter/nvim-treesitter',

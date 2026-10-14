@@ -1,4 +1,4 @@
--- commands.lua - 用户自定义命令：OpenPDF / OpenImage / Pdflatex / Xelatex / Lualatex / Run。
+-- commands.lua - 用户自定义命令：OpenPDF / OpenImage / Pdflatex / Xelatex / Lualatex / Run / SayHello。
 -- 打开方式走 config/platform.lua；执行命令用 jobstart 的 cwd 和回调，不拼 POSIX shell 语法，Windows 下同样可用。
 
 local P = require("config.platform")
@@ -251,36 +251,30 @@ vim.api.nvim_create_autocmd("BufWritePost", {
   end,
 })
 
--- Run：异步执行命令，输出收集后写临时文件进 quickfix；shell 重定向写法在 Windows 下不通用。
+-- Run：异步执行命令，输出实时写进独立的 scratch 窗口（见 config/run.lua）；
+-- 输出里有编译器风格的行会另外解析进 quickfix。
 vim.api.nvim_create_user_command("Run", function(opts)
-  local cmd = opts.args
-  if not cmd or cmd == "" then
-    print("用法：:Run <命令>  例如 :Run ./build.sh")
-    return
-  end
-
-  local tmpfile = vim.fn.tempname()
-  print("正在执行: " .. cmd)
-
-  P.run_capture(cmd, {
-    on_exit = function(exit_code, lines)
-      vim.schedule(function()
-        vim.fn.writefile(lines, tmpfile)
-        -- 兼容 GCC / Clang / MSVC 的常见输出格式
-        vim.o.errorformat = "%f:%l:%c: %m,%f:%l: %m,%f(%l): error %m,%f(%l): warning %m"
-        vim.cmd("cfile " .. vim.fn.fnameescape(tmpfile))
-        local num = vim.fn.getqflist({ size = 0 }).size
-        if num > 0 then
-          vim.cmd("copen")
-          print(string.format("执行结束（退出码 %d），quickfix 中有 %d 条输出", exit_code, num))
-        else
-          print(string.format("执行成功（退出码 %d），无输出", exit_code))
-        end
-      end)
-    end,
-  })
+  require("config.run").run(opts.args)
 end, {
-  nargs = '+',
+  -- 用 '*' 而不是 '+'：没有参数时走到 run.lua 里的用法提示，
+  -- 比 nvim 直接抛 E471: Argument required 友好（老代码是 '+'，那段提示其实是死代码）
+  nargs = '*',
   complete = 'file',
-  desc = "异步执行命令，输出存入 quickfix 列表",
+  desc = "异步执行命令，输出实时显示在独立的输出窗口里",
+})
+
+-- SayHello：空文件里写一份对应语言的 Hello, world! 模板。
+-- 模板与判断逻辑在 lua/config/hello.lua，这里只做命令注册。
+-- 注意 Neovim 的用户命令必须以大写字母开头，所以它不叫 :sayhello。
+-- 可选参数是 filetype 名（:SayHello python），给「认不出类型」的缓冲区用。
+vim.api.nvim_create_user_command("SayHello", function(opts)
+  require("config.hello").say_hello(opts.args)
+end, {
+  nargs = "?",
+  complete = function(arg_lead)
+    return vim.tbl_filter(function(lang)
+      return lang:find(arg_lead, 1, true) == 1
+    end, require("config.hello").supported())
+  end,
+  desc = "在空文件里写入对应语言的 Hello, world! 模板",
 })

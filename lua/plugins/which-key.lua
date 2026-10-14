@@ -11,14 +11,15 @@ return {
       -- 键位在 keymaps.lua 等处定义，这里只给前缀分组；新开前缀时回来补组名
       spec = {
         { '<leader>b', group = '+buffer' },
-        { '<leader>s', group = '+split' },
+        { '<leader>s', group = '+split/terminal' },
         { '<leader>t', group = '+toggle' },
         { '<leader>e', group = '+explorer' },
         { '<leader>g', group = '+git/goto' },
         { '<leader>m', group = '+misc/markdown' },
-        { '<leader>c', group = '+code (LSP)' },
-        { '<leader>r', group = '+rename/restart' },
-        { '<leader>f', group = '+format' },
+        -- 没有 <leader>c 组：重命名 / 代码操作已改用内置的 grn / gra（见 config/keymaps.lua）
+        { '<leader>r', group = '+restart' },
+        -- <leader>f 既是 LSP 格式化也是 telescope 的 ff/fg/fb/fh 前缀，两者都要写进来
+        { '<leader>f', group = '+find/format' },
         { '<leader>x', group = '+lua' },
       },
     },

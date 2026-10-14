@@ -15,7 +15,6 @@ local p = {
   bg_alt    = "#191B1E",  -- 状态栏 / 标签栏
   bg_float  = "#26282C",  -- 浮窗
   bg_elev   = "#2E3136",  -- 抬升表面
-  bg_hover  = "#35393F",
   bg_sel    = "#36445A",  -- 选中
   bg_cur    = "#272A2E",  -- 当前行
 
@@ -36,13 +35,11 @@ local p = {
   -- 蓝色阶（主色调）
   blue      = "#6A96D8",  -- 关键字
   blue_lt   = "#7FA9E8",  -- 函数
-  blue_br   = "#94B5E6",
   ice       = "#93CBF2",  -- 类型
   cyan      = "#5CB5DD",  -- 强调
 
   -- 功能色
   green     = "#7FD8C4",  -- 字符串
-  teal      = "#32AB83",
   sand      = "#DFBE7C",  -- 数字
   amber     = "#CDA253",
   red       = "#D87982",
@@ -50,6 +47,18 @@ local p = {
   violet    = "#B79AD4",
   peri      = "#A3C8EC",  -- 属性
   slate     = "#98A1AD",  -- 运算符
+
+  -- 行内虚拟文本 / diff 的底色（比主背景亮一档的功能色）。
+  -- 这两个系列以前直接写死在下面对应的高亮组里，按「调色板是唯一改动点」的约定收上来。
+  bg_vtext_error = "#391F24",
+  bg_vtext_warn  = "#383222",
+  bg_vtext_info  = "#1E2C3E",
+  bg_vtext_hint  = "#2A2438",
+  bg_vtext_ok    = "#1B342E",
+  bg_diff_add    = "#304241",
+  bg_diff_change = "#323E51",
+  bg_diff_delete = "#443337",
+  bg_diff_text   = "#4E5C72",
 }
 
 local set = vim.api.nvim_set_hl
@@ -288,11 +297,11 @@ apply({
   DiagnosticInfo               = { fg = p.blue_lt },
   DiagnosticHint               = { fg = p.violet },
   DiagnosticOk                 = { fg = p.green },
-  DiagnosticVirtualTextError   = { fg = p.red, bg = "#391F24" },
-  DiagnosticVirtualTextWarn    = { fg = p.amber, bg = "#383222" },
-  DiagnosticVirtualTextInfo    = { fg = p.blue_lt, bg = "#1E2C3E" },
-  DiagnosticVirtualTextHint    = { fg = p.violet, bg = "#2A2438" },
-  DiagnosticVirtualTextOk      = { fg = p.green, bg = "#1B342E" },
+  DiagnosticVirtualTextError   = { fg = p.red, bg = p.bg_vtext_error },
+  DiagnosticVirtualTextWarn    = { fg = p.amber, bg = p.bg_vtext_warn },
+  DiagnosticVirtualTextInfo    = { fg = p.blue_lt, bg = p.bg_vtext_info },
+  DiagnosticVirtualTextHint    = { fg = p.violet, bg = p.bg_vtext_hint },
+  DiagnosticVirtualTextOk      = { fg = p.green, bg = p.bg_vtext_ok },
   DiagnosticUnderlineError     = { undercurl = true, sp = p.red },
   DiagnosticUnderlineWarn      = { undercurl = true, sp = p.amber },
   DiagnosticUnderlineInfo      = { undercurl = true, sp = p.blue_lt },
@@ -319,10 +328,10 @@ apply({
 
 -- 差异 / Git
 apply({
-  DiffAdd     = { fg = p.green, bg = "#304241" },
-  DiffChange  = { fg = p.amber, bg = "#323E51" },
-  DiffDelete  = { fg = p.red, bg = "#443337" },
-  DiffText    = { fg = p.fg_bright, bg = "#4E5C72" },
+  DiffAdd     = { fg = p.green, bg = p.bg_diff_add },
+  DiffChange  = { fg = p.amber, bg = p.bg_diff_change },
+  DiffDelete  = { fg = p.red, bg = p.bg_diff_delete },
+  DiffText    = { fg = p.fg_bright, bg = p.bg_diff_text },
   Added       = { fg = p.green },
   Removed     = { fg = p.red },
   Changed     = { fg = p.amber },

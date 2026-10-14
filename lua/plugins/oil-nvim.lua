@@ -1,50 +1,36 @@
--- oil-nvim.lua - 目录编辑文件管理器，补 dired 的标记和批量操作。
+-- oil-nvim.lua - 目录编辑文件管理器（oil 本身就是 wdired），并在上面补 dired 的标记与批量操作。
+--
+-- 只写与 oil 默认值不同的选项。把默认值逐条抄一遍有两个坏处：后来的人会以为这里改过东西，
+-- 而且插件升级改了默认值之后，配置会把旧行为钉死。全部选项见 :h oil.SetupOpts。
 return {
   {
-    'stevearc/oil.nvim',
+    "stevearc/oil.nvim",
     ---@module 'oil'
     ---@type oil.SetupOpts
     opts = {
+      -- 目录缓冲区交给 oil 接管。这行是默认值，写出来是因为它和 init.lua 里关掉 netrw
+      -- 是一套配套决策，不是随手抄的。
       default_file_explorer = true,
-      columns = {
-        -- "icon",
-        "permissions",
-        "size",
-        "mtime",
-      },
-      buf_options = {
-        buflisted = false,
-        bufhidden = "hide",
-      },
+
+      -- 默认只显示图标；这里换成权限 / 大小 / 修改时间
+      columns = { "permissions", "size", "mtime" },
+
+      -- 简单编辑（改名这类）不弹确认框；删除仍会确认，那是 oil 的安全设计
       skip_confirm_for_simple_edits = true,
-      prompt_save_on_select_new_entry = true,
-      constrain_cursor = "editable",
+      -- 外部改动（git checkout、别的终端里删文件）自动重载目录
       watch_for_changes = true,
+
+      view_options = {
+        show_hidden = true,
+      },
+
+      -- dired 兼容层（实现在 lua/config/oil-dired.lua）：oil 的 wdired 已覆盖改名删除，
+      -- 这里补标记和批量执行。全部挂 <leader> 是因为 oil 缓冲区就是编辑缓冲区，
+      -- 照搬 dired 单字母会破坏编辑键位；盖掉的 <leader>d/mg/td/tw 在目录里用不到。
+      --
+      -- 标记按绝对路径记录，刷新、改排序、增删行后不会错位。
+      -- keymaps 其余条目沿用 oil 默认值，不再抄写；帮助窗口（g?）会渲染这张表。
       keymaps = {
-        -- oil 的帮助窗口直接渲染这张 keymaps 表，带 desc 的键位会自动出现
-        -- 帮助只绑 g?，不要绑单键 ?，避免抢掉反向搜索
-        ["g?"] = { "actions.show_help", mode = "n" },
-        ["<CR>"] = "actions.select",
-        ["<C-s>"] = { "actions.select", opts = { vertical = true } },
-        ["<C-h>"] = { "actions.select", opts = { horizontal = true } },
-        ["<C-t>"] = { "actions.select", opts = { tab = true } },
-        ["<C-p>"] = "actions.preview",
-        ["<C-c>"] = { "actions.close", mode = "n" },
-        ["<C-l>"] = "actions.refresh",
-        ["-"] = { "actions.parent", mode = "n" },
-        ["_"] = { "actions.open_cwd", mode = "n" },
-        ["`"] = { "actions.cd", mode = "n" },
-        ["g~"] = { "actions.cd", opts = { scope = "tab" }, mode = "n" },
-        ["gs"] = { "actions.change_sort", mode = "n" },
-        ["gx"] = "actions.open_external",
-        ["g."] = { "actions.toggle_hidden", mode = "n" },
-        ["g\\"] = { "actions.toggle_trash", mode = "n" },
-
-        -- dired 兼容层（lua/config/oil-dired.lua）：oil 的 wdired 已覆盖改名删除，
-        -- 这里补标记和批量执行。全部挂 <leader> 是因为 oil 缓冲区就是编辑缓冲区，
-        -- 照搬 dired 单字母会破坏编辑键位；盖掉的 <leader>d/mg/td/tw 在目录里用不到。
-
-        -- 标记按绝对路径记录，刷新、改排序、增删行后不会错位
         ["<leader>m"] = {
           callback = function() require("config.oil-dired").toggle_mark() end,
           desc = "dired: 标记/取消标记当前项（dired 的 m）",
@@ -93,123 +79,12 @@ return {
           mode = { "n", "v" },
         },
       },
-      view_options = {
-        -- 显示隐藏文件
-        show_hidden = true,
-        -- 什么算隐藏文件
-        is_hidden_file = function(name, bufnr)
-          local m = name:match("^%.")
-          return m ~= nil
-        end,
-        -- 即使 show_hidden 也不显示的文件
-        is_always_hidden = function(name, bufnr)
-          return false
-        end,
-        -- 文件名自然数排序，大目录自动关闭
-        natural_order = "fast",
-        case_insensitive = false,
-        sort = {
-          -- 可排序列见 :help oil-columns
-          { "type", "asc" },
-          { "name", "asc" },
-        },
-        -- 自定义文件名高亮组
-        highlight_filename = function(entry, is_hidden, is_link_target, is_link_orphan)
-          return nil
-        end,
-      },
-      -- SSH 传输时额外传给 scp 的参数
-      extra_scp_args = {},
-      -- S3 文件操作时额外传给 aws 的参数
-      extra_s3_args = {},
-      -- git 文件操作支持（实验性）
-      git = {
-        -- 返回 true 时自动 git add/mv/rm
-        add = function(path)
-          return false
-        end,
-        mv = function(src_path, dest_path)
-          return false
-        end,
-        rm = function(path)
-          return false
-        end,
-      },
-      -- oil.open_float 浮窗配置
-      float = {
-        -- 浮窗内边距
-        padding = 2,
-        -- 宽高可给整数或 0~1 的比例
-        max_width = 0,
-        max_height = 0,
-        border = nil,
-        win_options = {
-          winblend = 0,
-        },
-        -- 自定义浮窗标题
-        get_win_title = nil,
-        -- 预览分屏方向
-        preview_split = "auto",
-        -- 传给 nvim_open_win 的配置，改这里自定义布局
-        override = function(conf)
-          return conf
-        end,
-      },
-      -- 文件预览窗口配置
-      preview_win = {
-        -- 光标移动时自动刷新预览
-        update_on_cursor_moved = true,
-        -- 预览打开方式
-        preview_method = "fast_scratch",
-        -- 返回 true 时禁用该文件的预览（比如大文件）
-        disable_preview = function(filename)
-          return false
-        end,
-        -- Window-local options to use for preview window buffers
-        win_options = {},
-      },
-      -- 操作确认浮窗配置
-      confirmation = {
-        max_width = 0.9,
-        min_width = { 40, 0.4 },
-        width = nil,
-        max_height = 0.9,
-        min_height = { 5, 0.1 },
-        height = nil,
-        border = nil,
-        win_options = {
-          winblend = 0,
-        },
-      },
-      -- 进度浮窗配置
-      progress = {
-        max_width = 0.9,
-        min_width = { 40, 0.4 },
-        width = nil,
-        max_height = { 10, 0.9 },
-        min_height = { 5, 0.1 },
-        height = nil,
-        border = nil,
-        minimized_border = "none",
-        win_options = {
-          winblend = 0,
-        },
-      },
-      -- SSH 浮窗配置
-      ssh = {
-        border = nil,
-      },
-      -- 键位帮助浮窗配置
-      keymaps_help = {
-        border = nil,
-      },
     },
     dependencies = {
       { "nvim-mini/mini.icons", opts = {} },
       { "nvim-tree/nvim-web-devicons", opts = {} },
     },
-    -- dependencies = { "nvim-tree/nvim-web-devicons" }, -- use if you prefer nvim-web-devicons
-    -- 懒加载容易出问题，保持常驻
+    -- 懒加载容易出问题（它是目录缓冲区的接管者），保持常驻
     lazy = false,
-  }
+  },
 }

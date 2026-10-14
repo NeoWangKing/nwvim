@@ -1,39 +1,19 @@
 -- bufferline.lua - 顶部标签栏。
+--
+-- 只写和插件默认值不同的选项：diagnostics、hover.enabled、mode、themable、separator_style、
+-- tab_size、max_name_length、always_show_bufferline、color_icons 这些本来就是默认值，
+-- 删掉行为不变（`diagnostics = false` 和 `hover.enabled = false` 都是默认值 ——
+-- 前者"诊断不实时刷新"、后者"关闭悬停弹窗"描述的都是默认行为，别再抄回来）。
 return {
   {
-    'akinsho/bufferline.nvim',
+    "akinsho/bufferline.nvim",
     version = "*",
-    dependencies = 'nvim-tree/nvim-web-devicons',
+    dependencies = "nvim-tree/nvim-web-devicons",
     config = function()
-      require('bufferline').setup({
+      require("bufferline").setup({
         options = {
-          mode = "buffers",
-          themable = true,
-          numbers = "ordinal",
-
-          max_name_length = 18,
-          max_prefix_length = 15,
-          tab_size = 18,
-
-          diagnostics = false, -- 诊断不实时刷新 tabline，减少重绘
-          diagnostics_indicator = function(count, level)
-            local icon = level:match("error") and " " or " "
-            return " " .. icon .. count
-          end,
-
-          separator_style = "thin",
-          always_show_bufferline = true,
-          show_buffer_icons = true,
-          show_buffer_close_icons = true,
-          show_close_icon = true,
-
-          hover = {
-            enabled = false, -- 关闭悬停弹窗，减少 CursorHold 处理
-            delay = 200,
-            reveal = {'close'}
-          },
-
-          sort_by = 'insert_at_end',
+          numbers = "ordinal", -- 标签前显示序号（默认 "none"）
+          sort_by = "insert_at_end", -- 默认按 id 排，这里按打开顺序
           offsets = {
             {
               filetype = "NvimTree",
@@ -41,17 +21,15 @@ return {
               highlight = "Directory",
               text_align = "left",
               separator = true,
-            }
+            },
           },
-          color_icons = true,
-
-          highlights = {
-            buffer_selected = { bold = true, italic = false, },
-            -- 分隔线用 P3 淡钢蓝
-            separator = { fg = "#414549", },
-          },
-        }
+        },
+        highlights = {
+          buffer_selected = { bold = true, italic = false },
+          -- 分隔线用 P3 淡钢蓝（等于主题调色板里的 border_dim）
+          separator = { fg = "#414549" },
+        },
       })
     end,
-  }
+  },
 }

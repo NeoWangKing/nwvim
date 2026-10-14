@@ -30,7 +30,8 @@ return {
       },
       notify = {
         view = "notify",
-        background_colour = "#1F2124",   -- 与 p3-blue 主背景一致
+        -- 通知底色不在这里设：noice 不读 background_colour（它只是把消息转给 nvim-notify），
+        -- 真正生效的是 lua/plugins/notify.lua 里给 nvim-notify 的那一份。
       },
       lsp = {
         progress = {

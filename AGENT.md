@@ -21,18 +21,23 @@
 ## 1. 目录地图
 
 ```
-init.lua                 启动入口：装载各模块、设定配色、透明背景、启用 LSP
+init.lua                 启动入口。顺序：leader → 关内置功能 → 各模块 → lazy → 配色/透明背景
 colors/p3-blue.lua       自研配色方案（调色板 + 高亮组映射）
 dictionary/              拼写补全词库（英文 / 物理 / C 与计算机）
-scripts/                 仓库自检脚本（见第 2 节）
+ftdetect/                文件类型识别（gnuplot.lua: .gp；opf.lua: .opf → xml）
+scripts/                 仓库自检脚本（见第 2 节）+ 词库重建脚本
 lua/config/
   options.lua            编辑器选项（含剪贴板平台探测）
   keymaps.lua            全局键位 + LSP 键位（LspAttach 集中在一处）
-  autocmds.lua           自动命令
+  autocmds.lua           自动命令（全部挂同一个 augroup）
   commands.lua           自定义命令（:OpenPDF :OpenImage :Run :Xelatex …）
+  hello.lua              :SayHello 的模板表 + 「空文件 / 认得语言」判断
+  run.lua                :Run 的实现：输出流式写进独立 scratch 窗口 + 报错位置着色 + 从报错行跳转
+  terminal.lua           <leader>st 的自适应分屏终端
   lazy.lua               lazy.nvim 引导（含 git 协议探测）
   platform.lua           ★ 跨平台抽象层，三端兼容的核心
   oil-dired.lua          ★ oil.nvim 的 dired 行为扩展层
+  latex-check.lua        markdown 里 LaTeX 公式的语法检查（treesitter）
   telescope/             Telescope 相关拆分配置
 lua/plugins/*.lua        每个插件一个文件，按功能命名
 ```
@@ -40,6 +45,12 @@ lua/plugins/*.lua        每个插件一个文件，按功能命名
 ### 改配置时的约定
 
 - **一个插件一个文件**，文件名与用途对应，不要塞进大杂烩。
+- **全局键位只写 `lua/config/keymaps.lua`**（插件自己缓冲区里的键位除外，例如 oil 的
+  keymaps 表）。统一写 `<leader>` 而不是 `<space>`，两者等价但前者一眼可读。
+- **不要抄插件默认值**。配置里只保留「和默认值不同」的选项：抄一遍的坏处是后来的人
+  以为这里改过东西，而且插件升级改了默认值之后，配置会把旧行为钉死。
+  判断方法：去 `~/.local/share/nvim/lazy/<插件>/lua/.../config.lua` 里读 default 表。
+- **新增插件时先想清楚要不要懒加载**：见第 10 节（启动路径）。
 - **平台相关的判断一律走 `config/platform.lua`**，不要在插件文件里写
   `if vim.fn.has("mac") == 1`。新增平台差异时先往 `platform.lua` 里加函数。
 - **注释写中文**，并且解释「为什么」而不是「是什么」。这个仓库的注释密度
@@ -56,6 +67,11 @@ lua/plugins/*.lua        每个插件一个文件，按功能命名
 
 文件顶部是 `local p = { ... }` 调色板，下面全部高亮组都引用 `p.xxx`。
 **调色板是唯一改动点**，不要去改下面的高亮组字面量。
+
+以前有 9 处例外（5 个 `DiagnosticVirtualText*` 和 4 个 `Diff*` 直接写死了十六进制底色），
+现在都收进了调色板：`bg_vtext_error/warn/info/hint/ok`、`bg_diff_add/change/delete/text`。
+顺手删掉了 3 个没人引用的键（`bg_hover`、`blue_br`、`teal`）—— 当前是
+**定义 36 个键、引用 36 个键、0 未定义、0 未引用**。加色 / 删色之后跑一次检查脚本即可确认。
 
 ### 关键约束
 
@@ -117,13 +133,22 @@ lua/plugins/*.lua        每个插件一个文件，按功能命名
 
 | 类别 | 接口 |
 |---|---|
-| 平台判定 | `is_mac` / `is_linux` / `is_windows` / `is_wsl` / `pathsep` |
-| 打开方式 | `open_path` / `open_with_app` / `supports_app_named_open` / `has_exe` |
+| 平台判定 | `is_mac` / `is_linux` / `is_windows` / `is_wsl` |
+| 打开方式 | `open_path` / `open_with_app` / `supports_app_named_open` |
 | 外部程序 | `VIEWERS`（表）/ `pick_viewer(kind)` / `open_with_viewer` |
 | 剪贴板 | `clipboard_available` |
-| 执行 | `run_capture(cmd, opts)` |
+| 执行 | ——（原来的 `run_capture` 已删：`:Run` 改成流式输出窗口后没人用了，实现见 `config/run.lua`） |
+| 文件属性 | `chmod(paths, mode, on_done)` / `touch(paths, on_done)` / `compress(paths, on_done)` |
+| PATH | `prepend_path(dir)` |
+| 命令片段 | `CMD`（`bin_prefix` / `exe_suffix` / `python` / `opener`，给「最小可运行命令」用） |
 | Git | `detect_git_protocol` / `git_url_format` |
 | 词库 | `dictionary_dirs` |
+
+`chmod` / `touch` / `compress` 是给 dired 层的 `<leader>M` / `<leader>T` / `<leader>Z` 用的：
+**Windows 上根本没有 `chmod` / `touch` / `gzip` 命令**，以前直接调命令，在那边三个键等于坏的。
+现在八进制权限走 `vim.uv.fs_chmod`、touch 走 `vim.uv.fs_open` + `fs_utime`（三端一致），
+符号权限（`+x`）和 gzip 才需要外部命令，缺了就**明确报错**而不是静默什么都不做。
+三个函数统一用 `on_done(ok, err)` 回调收尾，调用方不用关心同步还是异步。
 
 ### 各平台默认外部程序
 
@@ -235,9 +260,9 @@ Emacs dired 有两块核心：
 | `<leader>t` | 反转标记 | `t` |
 | `<leader>%m` | 按正则标记（**Lua 正则**） | `% m` |
 | `<leader>d` | **暂存**删除，按 `:w` 提交 | `d`（`:w` 即 `x`） |
-| `<leader>M` | chmod | `M` |
-| `<leader>T` | touch | `T` |
-| `<leader>Z` | `gzip -k` 压缩（保留原文件） | `Z` |
+| `<leader>M` | chmod（八进制；`+x` 这类符号模式只在 POSIX 可用） | `M` |
+| `<leader>T` | touch（新建 / 刷新时间戳） | `T` |
+| `<leader>Z` | `gzip -k` 压缩（保留原文件；没装 gzip 会明确报错） | `Z` |
 | `<leader>!` | shell 命令（`{}` = 文件名） | `!` |
 
 > **删除是两步确认的**（oil 的安全设计，别当成 bug）：
@@ -253,6 +278,16 @@ Emacs dired 有两块核心：
 
 **全部归还给 vim 的原生键**（曾被误占，别改回去）：
 `u` `s` `^` `t` `T` `D` `M` `Z` `q` `m` `U` `!` `%` `?`
+
+**文件操作一律走 `config/platform.lua`**（见第 3 节）。`<leader>M` / `<leader>T` /
+`<leader>Z` 以前直接调 `chmod` / `touch` / `gzip`，在 Windows 上静默失败；
+现在实现在平台层，oil 侧只负责「取目标 → 报告结果 → 刷新目录」
+（`oil-dired.lua` 的 `reporter()` 统一做后两步）。
+
+**`lua/plugins/oil-nvim.lua` 里只写和 oil 默认值不同的选项。** 原来那张表里的 14 个
+默认键位、`view_options` 里的 `natural_order`/`case_insensitive`/`sort`/`is_always_hidden`/
+`highlight_filename`、以及 `float`/`preview_win`/`confirmation`/`progress`/`ssh`/
+`keymaps_help` 整块，逐项比对后确认全是插件默认值，已删除（查全部选项用 `:h oil.SetupOpts`）。
 
 **查看全部键位：按 `g?`**
 
@@ -374,6 +409,16 @@ require("config.oil-dired").chmod()
   它会漏进后续的 `:w` 命令行，变成 `:wy`，导致你以为 `:w` 坏了。
 - **测试里硬编码行号**：oil 目录内容会随操作变化而行号位移。
   按**文件名**定位，别按行号。
+- **`--startuptime` 是「追加写」，不是覆盖。** 同一个文件名跑第二次，文件里会有两份
+  记录，`grep -m1` 读到的是**上一次**的值 —— 于是所有计时看起来一模一样、还特别稳定。
+  每次测量用唯一文件名（带时间戳），这是本仓库踩过的坑。
+- **TUI 模式下 `--startuptime` 里有两条 `--- NVIM STARTED ---`**（第一条来自早期阶段）。
+  取最后一条：`grep -- '--- NVIM STARTED ---' f | tail -1`。
+- **懒加载后的插件要测「按下去真的会加载」**：headless 下 `nvim_feedkeys` 不可信，
+  但可以取映射里的回调直接调 —— `vim.fn.maparg("<Space>ff", "n", false, true).callback()`，
+  然后断言 `require("lazy.core.config").plugins["telescope.nvim"]._.loaded ~= nil`。
+- **测脚本一定要以 `-c 'qa!'` 收尾**：脚本中途报错时进程会挂到超时（本仓库踩过两次）。
+  稳妥写法：整段 `pcall` + 结果先 `flush` 到文件，命令行再加 `-c 'qa!'` 兜底。
 
 ---
 
@@ -404,6 +449,17 @@ require("config.oil-dired").chmod()
 | 19 | 以为 `skip_confirm_for_simple_edits = true` 会让删除也不再确认。实测 oil 对**删除**仍弹 `DELETE xxx [Y]es/[N]o`，`:w` 后必须按 `y`，否则看起来像「`:w` 没生效」 | `<leader>d` 暂存后 `:w`，再按 `y` 确认；改名不需要确认 |
 | 20 | 把 leader（`<space>`）本身也映射成一个完整命令。副作用不只是 `timeoutlen` 延迟——which-key 的 `Triggers.add` 会先跑 `is_mapped()`，**该键已被映射就不注册触发器**，导致提示面板永远弹不出来 | leader 键不要另作他用；本仓库已移除 `map("n", "<space>", ":")` |
 | 21 | `blink-cmp-dictionary` 内部用 `items[match] = {...}` 建字典、再 `vim.tbl_values()` 取出，**候选项顺序在这一步被销毁**。所以任何依赖「provider 返回顺序」的排序方案都会在 blink 层失效。实测：fzf 返回的顺序完全正确，但 blink 显示的是 `physicianless`/`importunate` 这类生僻词 | 用插件的 `separate_output`（有序）记录排名，经 `data.documentation` 透传，在 `transform_items` 里写成 `sortText`，并把 `fuzzy.sorts` 改成 `{ 'sort_text', 'score' }` |
+| 22 | **`mason-lspconfig` v2 里 `handlers` / `automatic_installation` 是死配置**（v1 遗留）。实测读 `mason-lspconfig/settings.lua`：v2 只认 `ensure_installed` 和 `automatic_enable`，那个 `handlers` 函数从来没被调用过 | 要「装好的服务器自动启用」用 `automatic_enable`；本仓库改成 `automatic_enable = false`，启用清单只在 `lua/plugins/lspconfig.lua` 的 `enabled` 列表里写一处 |
+| 23 | **`mason.setup()` 会把自己的 bin 目录**prepend** 进 PATH**，而 LSP 服务器是靠 PATH 找到 `lua-language-server` 的。把 mason 挪到 `VeryLazy` 之后，`nvim foo.py` 读文件、起服务器都早于 mason 加载 → 找不到可执行文件、静默不附着 | 用 `platform.prepend_path(stdpath("data")/mason/bin)` 在启动期先补上（`lspconfig.lua` 顶部），mason 之后重复插一次无害（幂等） |
+| 24 | **插件改成懒加载后，原来写在它 `config` 里的全局副作用会一起消失**。实测：`vim.g.loaded_netrw = 1` 原本写在 nvim-tree 的 config 里，nvim-tree 变懒后那两行不再保证执行，netrw 会和 oil 抢目录缓冲区 | 全局开关搬到 `init.lua`（第 2 节），注释说明为什么放那里 |
+| 25 | **lazy spec 里的 `opt = {}`、`priority = 1000 + lazy = false` 这类写法**：`opt` 不是 lazy 的字段（应为 `opts`，或直接删）；`priority` 只决定「加载顺序」，不会让插件变懒，所以四个备选主题以前都在启动期加载 | 只留必要字段；备选主题全部 `lazy = true`（用前 `:Lazy load <名字>`） |
+| 26 | **`cond = false` 的插件会从 lazy 里整个消失**（`require("lazy.core.config").plugins[name]` 变成 nil）。测 image.nvim 的终端能力判断时，脚本直接索引 nil 报错、又因为没写 `-c 'qa!'` 挂在超时 | 读 spec 前先判空；这也是 `cond` 的正常语义（该插件在这台机器上不存在） |
+| 27 | 想靠「窗口局部选项」的 `vim.opt` 与 `vim.wo` 区分行为 —— 实测两者对 `number` 落到同一处（都只改当前窗口），从终端窗口分屏出来仍然没行号。**别把 `vim.opt` 当成「改全局」的证据**，也别据此写"修好了一个 bug" | 用 `vim.wo` 表达意图即可；要判断真实行为就实测（第 6 节），别推理 |
+| 28 | **按扩展名猜 filetype 会猜错**（写 `:SayHello` 这种按类型分发的东西时最容易踩）。实测：`.tex` → `plaintex`（不是 `tex`）、`.cs` → `cs`（不是 `csharp`）、空的 `.bashrc` → `sh`（shell 文件的类型按**内容里的 shebang** 判，空文件没有 shebang 就退化成 sh） | 用 `vim.bo.filetype` 的实际值当键名，别用语言名；两者不一致时用别名表（见 `lua/config/hello.lua` 的 `M.aliases`） |
+| 29 | **`setqflist` / `getqflist` 解析一批行的两个坑**（`:Run` 的 quickfix 用到了，都实测过）：① 文档推荐的「不改 'errorformat' 就解析」写法 `getqflist({efm=…, lines=…})` 在 0.12.6 上**连文档自带例子都返回 0 条**，不可用；② 能用的 `setqflist({}, ' ', {efm=…, lines=…})` 会把**匹配不上的行也塞成 `valid=0` 的条目**，于是 `echo hello` 这种纯文本输出会被数成「有 N 条错误」 | 用 `setqflist(...)` 解析后**只保留 `valid == 1` 的条目**，再用 `setqflist({}, ' ', {items = …})` 写回（见 `lua/config/run.lua`） |
+| 30 | **别让 `errorformat` 去解析相对路径**：`setqflist` 的 `lines` 解析用的是 **nvim 的工作目录**，而 `:Run` 是在**文件所在目录**里跑命令的（Emacs 的 `M-!` 也这样）—— 实测把 `cwd` 键传进去对解析**无效**，于是 `main.c:3:7:` 会跳到 nvim 工作目录下的同名文件 | 自己按行认位置并按本次运行的目录拼绝对路径（`config/run.lua` 的 `split_location` / `resolve_path`） |
+| 31 | **缓冲区名字非空 ≠ 它是文件**：输出缓冲区叫 `[Run]`，`fnamemodify(name, ":p:h")` 会把它算成「nvim 工作目录」而不是报错 —— 于是「焦点在输出窗口时再 `:Run`」就悄悄用了错的目录 | 判目录前先看 `buftype == ""`（只认真正的文件缓冲区）；另外把源缓冲区号记下来，焦点在输出窗口时回退到它的目录 |
+| 32 | **又差点抄了一遍内置映射**：想给 quickfix 加 `]q`/`[q`，实测 Neovim 0.12 在 `_core/defaults.lua` 里**已经内置了**（`]q`/`[q` = `:cnext`/`:cprev`，还有 `[Q`/`]Q`、`[<C-Q>` 等一整套 vim-unimpaired 风格） | 加键位前先 `:verbose map ]q` 或读 `runtime/lua/vim/_core/defaults.lua`，别照抄自己以为的默认值（同第 10 节「只写与默认不同的选项」） |
 
 ---
 
@@ -427,34 +483,125 @@ git -C ~/.config/nvim checkout .          # 丢弃全部未提交改动
 
 已删除但可恢复：`lua/plugins/lsp.lua` → `git show HEAD:lua/plugins/lsp.lua`
 
-### 当前未提交 / 未跟踪
-
-```
- M init.lua                         M lua/plugins/blink.lua
- M lazy-lock.json                   M lua/plugins/bufferline.lua
- M lua/config/commands.lua          D lua/plugins/lsp.lua
- M lua/config/keymaps.lua           M lua/plugins/lspconfig.lua
- M lua/config/lazy.lua              M lua/plugins/lualine.lua
- M lua/config/options.lua           M lua/plugins/oil-nvim.lua
-?? AGENT.md  ?? colors/  ?? dictionary/  ?? scripts/
-?? lua/config/oil-dired.lua  ?? lua/config/platform.lua
-```
+> 别再往下写死「当前未提交清单」—— 这种清单必然会过期（曾经就过期过一轮，
+> 让人以为 `colors/`、`dictionary/` 还是未跟踪文件）。要判断状态直接 `git status`。
 
 ---
 
 ## 9. 待办 / 已知欠债
 
-- **README.md 第 10 行已过期**：写着「默认 `catppuccin`」，实际是 `p3-blue`。
 - `~/.config/yazi/yazi.toml` 里的 opener 仍硬编码 macOS
   （`open -a skim` / `open %s`），未走平台抽象。
-- `lua/plugins/image.lua` 硬编码 `backend = "kitty"` + `processor = "magick_cli"`，
-  是终端相关的，换终端可能失效。
-- `colors/p3-blue.lua` 有 3 个未被引用的调色板键：`bg_hover`、`blue_br`、`teal`。
-- `:checkhealth` 未系统跑过。
+- `lua/plugins/image.lua` 的 `backend = "kitty"` + `processor = "magick_cli"` 仍是硬编码，
+  现在只加了 `cond`（终端不支持图形协议就不加载）。要换后端（如 ueberzug）得改这里。
+- 三端只在 Linux 上实测过。Windows(WSL) 那边的三处平台差异（剪贴板、`Viewers`、
+  文件属性三件套）是按 uv API 写的，**还没在真机验过**；换到 Windows 时优先看这几个。
+- `:checkhealth` 已跑过 `lazy` / `vim.treesitter`（均 ✅）；`vim.lsp` / `mason` 在
+  无写权限的沙箱里跑不了（mason 会 EPERM），换机器时建议手动跑一次。
+
+### `:checkhealth` 现状（2026-10-15 全量跑过一次）
+
+> **插件更新后要复核什么**（2026-10-15 做过一次全量 `:Lazy update`，20 个插件有更新）：
+>
+> 1. `build = ":TSUpdate"` 会跟着更新自动跑。**nvim-treesitter 的 `!` 提交是「parser 与
+>    queries 一起升级」，必须重编**；证据看 `stdpath("data")/site/parser/*.so` 的 mtime。
+>    这次 22 个 parser 全部重编且加载无 ABI 报错。
+> 2. 复核用 §6 那套：headless 载入 + 选项/键位 dump diff + oil dired 三件套 +
+>    markdown/LaTeX + `vim.lsp._enabled_configs`（或 `vim.lsp.is_enabled(name)`）看启用清单。
+> 3. 最脆的三处，升级后优先验：
+>    - **blink.cmp / blink-cmp-dictionary**：引擎或词典源一动，`separate_output` →
+>       `sortText` → `fuzzy.sorts` 这条链子就可能失效，表现为「虚影候选全是生僻词」。
+>       （2026-10-15 这两个正好没更新。）
+>    - **mini.ai**：`feat(ai)!: use mode based default reference region` 改了
+>      **可视模式**下文本对象的搜索范围（普通/操作模式不受影响）。
+>    - **mason-lspconfig**：只认 `ensure_installed` / `automatic_enable`。升级后回读
+>      `mason-lspconfig/settings.lua` 确认键名没变，否则 `automatic_enable = false` 会静默失效。
+
+除了下面这些，其余全绿（`lazy` / `lspconfig` / `mason-lspconfig` / `noice` /
+`nvim-treesitter` / `vim.lsp` / `vim.pack` / `vim.treesitter` / `vim.health` 都是 ✅）：
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| `vim.provider` Node | 已处理 | 全局 npm 包 `neovim` 版本落后会一直警告；本配置没有任何 node 远程插件，已在 init.lua 里 `loaded_node_provider = 0` |
+| `mason` 版本警告 | 待更新 | 锁的是 v2.2.1，上游 v2.3.1，`:Lazy update mason.nvim` 即可 |
+| `mason` 的 luarocks / Ruby / Composer / julia | 无需处理 | 都是「某些包需要这些工具链」的可选提示；`ensure_installed` 里没有需要它们的服务器 |
+| `vim.deprecated` | 改不了 | noice.nvim 内部用了已弃用的 `vim.str_utfindex`（`noice/view/backend/notify.lua`）。不是本仓库的代码，等上游修；`:Lazy update noice.nvim` 后复查 |
+| `which-key` 的 11 条 overlap | 见下 | 7 条来自上游（nvim 内置 `gc`、nvim-surround 的 `ys`/`yS`、内置文本对象 `an`/`in` + mini.ai），与配置无关；4 条是本仓库的 |
+
+本仓库自己的 4 条 overlap（都是「前缀本身也是映射」，代价是按下前缀后要等
+`timeoutlen` = 300ms 才出结果，功能都正常）：
+
+```
+<leader>e   文件树      vs  <leader>en / <leader>ep / <leader>ee(诊断)
+<leader>f   LSP 格式化  vs  <leader>ff / fg / fb / fh（telescope）
+<leader>bc  关闭 buffer vs  <leader>bch / <leader>bcl
+```
+
+原来还有第 4 条 `gr`（引用）与内置 `grn`/`gra`/`grr`/`gri`/`grt` 重叠 —— 那条已经处理掉了：
+**援引内置**，删掉本仓库的 `gr` / `<leader>rn` / `<leader>ca`。内置那套是全局无条件设置的
+（不依赖 LspAttach，见 `runtime/lua/vim/_core/defaults.lua`），而 `gd` / `K` 内置没有、
+仍由 `config/keymaps.lua` 提供。以后想再动这类按键，先问清楚（第 7 节陷阱 20 的同类判断）。
 
 ---
 
-## 10. 系统层面的背景（供参考）
+## 10. 启动路径与懒加载（加插件前的首要判断）
+
+### 现状（实测：同一台机器上 A/B 交替跑 24 轮，取中位数）
+
+| | 无参数启动 | 带文件启动（`nvim x.py`） |
+|---|---|---|
+| 懒加载改造前 | 67.3 ms | 67.6 ms |
+| 现在 | 49.2 ms | 49.9 ms |
+| 变化 | **-27%** | **-26%**（另两轮独立测量为 -25% / -27%） |
+
+省下来的时间全部来自「把不需要在启动期存在的插件挪出去」：启动期加载的插件从
+**25 个降到 13 个**。功能没少（都验证过按下去会加载），只是没在启动时付钱。
+绝对值和机器负载关系很大（同一份配置在不同轮次能差 40ms），**只看同一轮里的比例**。
+
+### 必须启动期加载的（`lazy = false`，别改成懒加载）
+
+| 插件 | 为什么 |
+|---|---|
+| `blink.cmp` | 要在任何 LSP 服务器启动前把能力集合并进去（`lspconfig.lua` 取它的 `get_lsp_capabilities()`） |
+| `nvim-lspconfig` | 同上：`vim.lsp.config("*", {...})` 必须早于服务器启动 |
+| `nvim-treesitter` | 高亮依赖它的 filetype → parser 映射（`plugin/filetypes.lua`） |
+| `oil.nvim` | 目录缓冲区的接管者（`vim .` / `:e src/` 要立刻生效） |
+| `bufferline` / `lualine` / `indent-blankline` | 界面常驻，没有更晚的加载时机 |
+| `mini.nvim` | 只 setup 一个 `mini.ai`，代价很小 |
+
+### 已懒加载的（以及触发方式）
+
+| 插件 | 触发 |
+|---|---|
+| 4 个备选主题 | `lazy = true`；换主题前 `:Lazy load <名字>` |
+| `telescope.nvim`（连带 plenary / fzf-native） | `cmd = "Telescope"`；键位在 keymaps.lua 写成 `<cmd>Telescope find_files<CR>` |
+| `nvim-tree` | `cmd = { "NvimTreeToggle", … }`；键位在 keymaps.lua |
+| `lazygit.nvim` | `cmd = "LazyGit"` |
+| `ghostty.nvim` | `cond = is_mac`（只有 macOS 有意义） |
+| `image.nvim` | `cond` = 终端支持 kitty 图形协议 |
+| `mason` + `mason-lspconfig` | `event = "VeryLazy"` + `cmd = { "Mason", … }`；PATH 由 `platform.prepend_path` 兜住（陷阱 23） |
+| `render-markdown` | `ft = "markdown"` |
+| `noice` / `notify` / `which-key` / `surround` / `dashboard` / `autopairs` | `VeryLazy` / `VimEnter` / `InsertEnter` |
+
+### 加新插件时的判断顺序
+
+1. 它是否必须在「打开第一个文件之前」就绪（能力集、目录接管、常驻 UI）？是 → `lazy = false`。
+2. 否则找自然触发点：能对到命令就 `cmd`，能对到文件类型就 `ft`，能对到按键就把键位
+   写进 spec 的 `keys`，或写 `<cmd>…<CR>` 配 `cmd`。
+3. 都没有，用 `event = "VeryLazy"`（启动之后、空闲时）。
+4. 只在某个平台 / 某种终端才成立，加 `cond`（注意：`cond = false` 时插件会从 lazy 里消失）。
+
+### 测量方法（**别只看一次结果**）
+
+这台机器上单次启动的波动有 ±15 ms，**只测一次会得出相反的结论**。做法：
+
+- 准备一份对照副本（`rsync` 到 /tmp），A/B 交替跑 12–20 轮；
+- 取中位数和最小值，不看某一次；
+- `--startuptime` 每次换唯一文件名（追加写，见 6.4）；TUI 模式取最后一条 `NVIM STARTED`。
+
+---
+
+## 11. 系统层面的背景（供参考）
 
 - macOS 27.0，Apple A18 Pro，6 核 / 8 GB RAM，主机 `NeoMac.local`
 - 完整系统基线快照在 `~/SYSTEM-BASELINE.md`

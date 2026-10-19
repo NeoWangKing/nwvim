@@ -40,9 +40,8 @@ require('config.latex-check')
 require('config.lazy')
 
 -- ── 5. 配色 + 透明背景 ────────────────────────────────────────────
--- 自研配色在上面这行之后由 colors/p3-blue.lua 载入；备选主题见 lua/plugins/theme.lua。
--- 换主题：把下面的名字改成 gruber-darker / tokyonight / catppuccin / gruvbox 之一，
--- 那四个是懒加载的，改完先 :Lazy load <名字> 再 :colorscheme <名字> 试。
+-- 当前用 nord；自研 p3-blue 和 catppuccin / gruber-darker / tokyonight / gruvbox 作为备选。
+-- 换主题：把下面的名字改掉即可，备选都是懒加载的。
 
 -- 透明背景：清掉 UI 装饰组的实心底色，让终端壁纸透出来（Neovide 下保持不透明）。
 -- nvim_set_hl 是整体替换：只传 { bg = "none" } 会抹掉该组原有的 fg/bold，先取出当前定义再写回。
@@ -57,7 +56,7 @@ local function set_transparent()
     "TabLine", "TabLineFill", "TabLineSel", "ColorColumn",
     -- 光标行上的符号列 / 折叠列：漏了它们会在光标处出现一块实底方块
     "CursorLineSign", "CursorLineFold", "FoldColumn",
-    -- NvimTree* 这些组是主题（colors/p3-blue.lua）定义的，文件树插件本身不重新设置它们，
+    -- NvimTree* 这些组是主题定义的，文件树插件本身不重新设置它们，
     -- 所以即使 nvim-tree 是懒加载、晚于这里加载，清掉的颜色也不会被覆盖。
     "NvimTreeWinSeparator", "NvimTreeNormal", "NvimTreeNormalNC", "NvimTreeEndOfBuffer",
     "NvimTreeCursorLine", "NvimTreeSignColumn", "NvimTreeStatusLine",
@@ -83,7 +82,7 @@ local function set_transparent()
   end
 end
 
-vim.cmd.colorscheme("p3-blue")
+vim.cmd.colorscheme("nord")
 
 if not vim.g.neovide then
   -- 先同步清一次：必须赶在 bufferline 解析颜色之前

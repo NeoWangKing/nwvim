@@ -36,7 +36,11 @@ return {
     ---@module 'blink.cmp'
     ---@type blink.cmp.Config
     opts = {
-      keymap = { preset = 'super-tab' },
+      keymap = {
+        preset = 'super-tab',
+        ['<C-k>'] = false, -- 让给 tmux / nvim 分屏导航
+        ['<A-k>'] = { 'show_signature', 'hide_signature', 'fallback' }, -- 签名帮助改到 Alt+k
+      },
 
       appearance = {
         nerd_font_variant = 'mono',

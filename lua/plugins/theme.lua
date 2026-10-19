@@ -1,12 +1,12 @@
--- theme.lua - 备选主题插件；实际用的 p3-blue 是自研的（colors/p3-blue.lua），
--- 由 init.lua 直接 colorscheme 加载，和这些插件无关。
+-- theme.lua - 备选主题插件；当前用 nord，由 init.lua 加载。
 --
--- 全部 lazy = true：以前四个主题都在启动期加载（priority = 1000 只会让它们更早加载，
--- 不会让它们变懒），为一个用不到的主题付启动时间不划算。
--- 想换成其中之一：先 :Lazy load gruvbox，再 :colorscheme gruvbox 改 init.lua 那行。
+-- 当前主题必须启动时加载，否则 lualine 找不到对应 theme 文件。
+-- 其余主题 lazy = true，不占启动时间。
+-- 想换：把 init.lua 里的名字改成 catppuccin / gruber-darker / tokyonight / gruvbox / p3-blue。
 return {
+  { "shaunsingh/nord.nvim", lazy = false, priority = 1000 },
   { "blazkowolf/gruber-darker.nvim", lazy = true },
   { "folke/tokyonight.nvim", lazy = true },
-  { "catppuccin/nvim", name = "catppuccin", lazy = true },
+  { "catppuccin/nvim", name = "catppuccin", lazy = true, opts = { flavour = "mocha" } },
   { "ellisonleao/gruvbox.nvim", lazy = true },
 }

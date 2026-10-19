@@ -12,8 +12,13 @@ return {
       -- 是一套配套决策，不是随手抄的。
       default_file_explorer = true,
 
-      -- 默认只显示图标；这里换成权限 / 大小 / 修改时间
-      columns = { "permissions", "size", "mtime" },
+      -- 图标 + 权限 / 大小 / 修改时间；列值用标准高亮组上色
+      columns = {
+        "icon",
+        { "permissions", highlight = "String" },
+        { "size", highlight = "Number" },
+        { "mtime", highlight = "Comment" },
+      },
 
       -- 简单编辑（改名这类）不弹确认框；删除仍会确认，那是 oil 的安全设计
       skip_confirm_for_simple_edits = true,
@@ -22,6 +27,17 @@ return {
 
       view_options = {
         show_hidden = true,
+        -- 文件名按文件类型上色（目录/链接仍用 oil 自己的高亮组）
+        highlight_filename = function(entry, is_hidden, is_link_target, is_link_orphan)
+          if is_hidden then return "OilHidden" end
+          if entry.type == "directory" then return "OilDir" end
+          if is_link_orphan then return "OilOrphanLink" end
+          if is_link_target then return "OilLinkTarget" end
+          local ok, devicons = pcall(require, "nvim-web-devicons")
+          if not ok then return nil end
+          local _, hl = devicons.get_icon(entry.name, nil, { default = true })
+          return hl
+        end,
       },
 
       -- dired 兼容层（实现在 lua/config/oil-dired.lua）：oil 的 wdired 已覆盖改名删除，

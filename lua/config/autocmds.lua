@@ -35,6 +35,24 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = set_indent(3),
 })
 
+-- 回车 / o 键自动延续注释前缀（markdown 的 > 引用和 -/*/+ 列表也算）。
+-- 放到 vim.schedule 里：FileType 期间 ftplugin 可能还会改 formatoptions，
+-- 等这一轮事件结束再补 r/o，避免被覆盖。没有 comments 的语言跳过。
+vim.api.nvim_create_autocmd("FileType", {
+  group = augroup,
+  pattern = "*",
+  callback = function(ev)
+    vim.schedule(function()
+      if not vim.api.nvim_buf_is_valid(ev.buf) then return end
+      if vim.bo[ev.buf].comments == "" then return end
+      local fo = vim.bo[ev.buf].formatoptions
+      if not fo:find("r", 1, true) then fo = fo .. "r" end
+      if not fo:find("o", 1, true) then fo = fo .. "o" end
+      vim.bo[ev.buf].formatoptions = fo
+    end)
+  end,
+})
+
 -- 终端缓冲区不显示行号。
 -- 写成 vim.wo 是为了表明「只改这个窗口」：number 是窗口局部选项，
 -- 实测 vim.opt 与 vim.wo 在这里落到同一处（都改当前窗口），

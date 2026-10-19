@@ -35,6 +35,17 @@ return {
         converter = { 'utftex', 'latex2text' },
       },
 
+      -- 不启用 conceal：保留 _text_、[text](url) 等原始标记，避免宽度变化
+      win_options = {
+        conceallevel = { default = 0, rendered = 0 },
+        concealcursor = { default = '', rendered = '' },
+      },
+
+      -- 代码块完全不渲染，只保留 treesitter 语法高亮
+      code = {
+        enabled = false,
+      },
+
       -- 不写颜色：高亮组都 link 到 treesitter/标准组，自动跟随主题
       -- 关掉标题色带：实心色带接不上行号列，也与透明背景冲突
       heading = {

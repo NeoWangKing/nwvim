@@ -1,4 +1,6 @@
--- noice.lua - 弹出式命令行、通知和 LSP 提示。
+-- noice.lua - 通知和 LSP 提示；命令行交给 Neovim 原生。
+-- noice 的 messages/cmdline 会启用 ext_messages，把 cmdheight 压成 0，
+-- 状态栏下面就没有输入行；这里关掉它们，保留 popupmenu 等其余功能。
 return {
   {
     "folke/noice.nvim",
@@ -8,23 +10,8 @@ return {
       "rcarriga/nvim-notify",
     },
     opts = {
-      cmdline = {
-        view = "cmdline_popup",   -- 弹出式命令行（想用传统底部就改 "cmdline"）
-        format = {
-          cmdline = { pattern = "^:", icon = "", lang = "vim" },
-          search_down = { kind = "search", pattern = "^/", icon = " ", lang = "regex" },
-          search_up = { kind = "search", pattern = "^%?", icon = " ", lang = "regex" },
-          filter = { pattern = "^:%s*!", icon = "$", lang = "bash" },
-          lua = { pattern = "^:%s*lua%s+", icon = "", lang = "lua" },
-          help = { pattern = "^:%s*he?l?p?%s+", icon = "" },
-          input = { view = "cmdline_input", icon = "󰥻 " },
-        },
-      },
-      messages = {
-        view = "notify",
-        view_error = "notify",
-        view_warn = "notify",
-      },
+      cmdline = { enabled = false },
+      messages = { enabled = false },
       popupmenu = {
         backend = "nui",   -- 补全菜单交给 nui 渲染
       },

@@ -260,7 +260,7 @@ apply({
   ["@markup.heading.4"]      = { fg = p.cyan, bold = true },
   ["@markup.heading.5"]      = { fg = p.peri, bold = true },
   ["@markup.heading.6"]      = { fg = p.violet, bold = true },
-  ["@markup.quote"]          = { fg = p.fg_muted, italic = true },
+  ["@markup.quote"]          = { fg = p.fg_muted },
   ["@markup.math"]           = { fg = p.cyan },
   ["@markup.link"]           = { fg = p.cyan },
   ["@markup.link.label"]     = { fg = p.ice },

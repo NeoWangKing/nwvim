@@ -121,7 +121,25 @@ local function resolve_path(path, base)
   if path:match("^[/\\]") or path:match("^%a:[/\\]") then
     return vim.fs.normalize(path)
   end
-  return vim.fs.normalize(vim.fs.joinpath(base or vim.fn.getcwd(), path))
+
+  base = base or vim.fn.getcwd()
+  local candidates = { base }
+
+  -- cargo/rustc 的路径通常相对 workspace 根，而不是当前 cwd：
+  -- 在 breamer/src 里跑 cargo，输出是 src/main.rs，要回到 breamer/ 去拼。
+  local root = vim.fs.root(base, { "Cargo.toml", "go.mod", "package.json", ".git" })
+  if root and root ~= base then
+    candidates[#candidates + 1] = root
+  end
+
+  for _, dir in ipairs(candidates) do
+    local candidate = vim.fs.normalize(vim.fs.joinpath(dir, path))
+    if vim.fn.filereadable(candidate) == 1 then
+      return candidate
+    end
+  end
+
+  return vim.fs.normalize(vim.fs.joinpath(base, path))
 end
 
 ---认出一行里的报错位置，并且**确认文件真的存在**才认。

@@ -35,6 +35,9 @@ require('config.commands')
 -- markdown 里 LaTeX 公式的语法检查，只注册 FileType autocmd，不占启动时间。
 require('config.latex-check')
 
+-- tikz 没有独立 parser，注册成 latex 的别名让代码块注入 latex 高亮
+vim.treesitter.language.register("latex", "tikz")
+
 -- ── 4. 插件管理器 ─────────────────────────────────────────────────
 -- 剪贴板统一由 config/options.lua 按平台探测处理，这里不要再无条件设置。
 require('config.lazy')

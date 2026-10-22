@@ -72,7 +72,7 @@ return {
 
       -- 启用列表。显式写死而不是靠 mason 的 automatic_enable：
       -- 后者要等 registry 刷新成功才触发，离线/网络受限时会一个都不启用。
-      local enabled = { "astro", "clangd", "cssls", "lua_ls", "marksman", "pyright", "texlab", "ts_ls" }
+      local enabled = { "astro", "clangd", "cssls", "lua_ls", "marksman", "pyright", "rust_analyzer", "texlab", "ts_ls" }
       if vim.fn.executable("julia") == 1 then
         -- Julia 未安装的平台（如当前 Linux）跳过，避免 vim.lsp 健康检查报警
         enabled[#enabled + 1] = "julials"

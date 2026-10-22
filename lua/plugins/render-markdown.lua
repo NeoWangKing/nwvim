@@ -12,6 +12,12 @@ return {
       'nvim-mini/mini.icons',
     },
 
+    config = function(_, opts)
+      require('render-markdown').setup(opts)
+      -- 只给背景，不设前景，避免覆盖 treesitter 的语法色
+      vim.api.nvim_set_hl(0, 'RenderMarkdownCode', { bg = '#2E3440' })
+    end,
+
     -- 临时看原文用；insert 模式本来就会自动回原文
     keys = {
       {
@@ -41,15 +47,23 @@ return {
         concealcursor = { default = '', rendered = '' },
       },
 
-      -- 代码块完全不渲染，只保留 treesitter 语法高亮
+      -- 代码块只加背景色，保留 ``` 围栏；不加边框/语言标签/sign，避免布局变化
       code = {
-        enabled = false,
+        enabled = true,
+        conceal_delimiters = false,
+        border = 'none',
+        sign = false,
+        language = false,
+        language_icon = false,
+        language_name = false,
+        highlight = 'RenderMarkdownCode', -- 只带背景，保留 treesitter 语法色
       },
 
       -- 不写颜色：高亮组都 link 到 treesitter/标准组，自动跟随主题
-      -- 关掉标题色带：实心色带接不上行号列，也与透明背景冲突
+      -- 关掉标题色带和 sign：sign 会临时占用 signcolumn，导致普通/插入模式文字左右跳
       heading = {
         backgrounds = {},
+        sign = false,
       },
 
       -- 其余组件保持插件默认

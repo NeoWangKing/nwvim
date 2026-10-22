@@ -89,7 +89,9 @@ if not vim.g.neovide then
   set_transparent()
 
   -- 再广播 ColorScheme，让 bufferline 按透明状态重建图标高亮；否则它缓存的实底会一直用到下次换主题。
-  pcall(vim.cmd, "doautocmd ColorScheme")
+  pcall(function()
+    vim.cmd("doautocmd ColorScheme")
+  end)
 
   -- 之后换主题时兜底。挂进带 clear = true 的 augroup，
   -- 否则 :source init.lua 会再注册一遍，每次换主题就多跑一次。
@@ -109,3 +111,4 @@ end
 
 -- LSP 服务器「装哪些、开哪些」全部收在 lua/plugins/lspconfig.lua，
 -- 这里不再重复 vim.lsp.enable（两处同时管会出现「到底谁生效」的问题）。
+vim.lsp.log.set_level("error")
